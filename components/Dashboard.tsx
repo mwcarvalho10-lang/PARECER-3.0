@@ -94,12 +94,23 @@ export function Dashboard({ appData, onSelectClass }: DashboardProps) {
 
   const getGradeColor = (g: number) => {
     switch(g) {
-      case 1: return '#0ea5e9';
-      case 2: return '#7fb432';
-      case 3: return '#f59e0b';
-      case 4: return '#8b5cf6';
-      case 5: return '#005bb7';
-      default: return '#0ea5e9';
+      case 1: return '#0284c7';
+      case 2: return '#16a34a';
+      case 3: return '#d97706';
+      case 4: return '#7c3aed';
+      case 5: return '#1d4ed8';
+      default: return '#0284c7';
+    }
+  };
+
+  const getGradeTheme = (g: number) => {
+    switch(g) {
+      case 1: return { icon: '🎨', title: '1º ANO', subtitle: 'Alfabetização & Descobertas' };
+      case 2: return { icon: '✏️', title: '2º ANO', subtitle: 'Leitura & Criatividade' };
+      case 3: return { icon: '⭐', title: '3º ANO', subtitle: 'Expressão & Conhecimento' };
+      case 4: return { icon: '🚀', title: '4º ANO', subtitle: 'Investigação & Autonomia' };
+      case 5: return { icon: '🎓', title: '5º ANO', subtitle: 'Conquistas & Transição' };
+      default: return { icon: '📚', title: `${g}º ANO`, subtitle: 'Ensino Fundamental' };
     }
   };
 
@@ -144,26 +155,58 @@ export function Dashboard({ appData, onSelectClass }: DashboardProps) {
   };
 
   return (
-    <div className="nordeste-bg h-full overflow-y-auto relative">
+    <div className="nordeste-bg h-full overflow-y-auto relative selection:bg-amber-200">
+      {/* Decorative Childlike School Doodles in corners */}
+      <div className="absolute top-6 left-6 hidden lg:flex items-center gap-2 pointer-events-none select-none opacity-85 z-0">
+        <span className="text-4xl animate-bounce duration-1000">☀️</span>
+        <span className="text-2xl text-sky-400">☁️</span>
+      </div>
+      <div className="absolute top-6 right-36 hidden lg:flex items-center gap-2 pointer-events-none select-none opacity-80 z-0">
+        <span className="text-2xl">✈️</span>
+        <span className="text-xl">⭐</span>
+      </div>
+      <div className="absolute bottom-6 left-8 hidden lg:flex items-center gap-2 pointer-events-none select-none opacity-80 z-0">
+        <span className="text-3xl">🎨</span>
+        <span className="text-2xl">✏️</span>
+      </div>
+      <div className="absolute bottom-6 right-8 hidden lg:flex items-center gap-2 pointer-events-none select-none opacity-80 z-0">
+        <span className="text-2xl">📚</span>
+        <span className="text-3xl">🎒</span>
+      </div>
+
       <div className="absolute top-4 right-4 z-10">
         <button 
           onClick={isAdminAuth ? () => setIsAdminAuth(false) : openAdminModal} 
-          className="flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-md text-slate-700 rounded-full shadow-sm border border-slate-200 hover:bg-white text-xs font-bold uppercase transition-all"
+          className="flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-md text-slate-700 rounded-full shadow-sm border border-slate-200 hover:bg-white text-xs font-bold uppercase transition-all"
         >
           {isAdminAuth ? <Lock className="w-4 h-4 text-red-500" /> : <Settings className="w-4 h-4 text-slate-400" />}
           {isAdminAuth ? "Sair do Adm" : "Admin"}
         </button>
       </div>
 
-      <div className="max-w-4xl mx-auto py-12 px-6">
-        <header className="mb-12 text-center">
-          <div className="mb-6 flex justify-center">
-            <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-escola-azul to-blue-600 shadow-[0_8px_30px_rgb(0,91,183,0.2)] flex items-center justify-center text-white">
-              <GraduationCap className="w-8 h-8" />
+      <div className="max-w-4xl mx-auto py-10 px-6 relative z-1">
+        <header className="mb-10 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-100/90 border border-amber-300/80 text-amber-900 text-[10px] font-black uppercase tracking-wider mb-4 shadow-xs">
+            <span>🎒</span> Ano Letivo 2026 • Caderno Pedagógico
+          </div>
+
+          <div className="mb-4 flex justify-center">
+            <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-sky-400 via-escola-azul to-emerald-400 shadow-[0_10px_25px_rgba(0,91,183,0.22)] flex items-center justify-center text-white ring-4 ring-white relative">
+              <GraduationCap className="w-10 h-10" />
+              <span className="absolute -bottom-1 -right-1 text-lg">✏️</span>
             </div>
           </div>
           <h1 className="text-3xl font-black text-slate-800 uppercase tracking-tight font-serif">Gestão Pedagógica</h1>
-          <p className="text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px] mt-2">E. M. Raymundo Lemos Santana</p>
+          <p className="text-slate-600 font-bold uppercase tracking-[0.15em] text-xs mt-1">E. M. Raymundo Lemos Santana</p>
+          <p className="text-slate-400 font-semibold text-[11px] mt-0.5">Caderno de Habilidades & Pareceres Descritivos</p>
+
+          <div className="flex justify-center gap-2 mt-4">
+            <span className="w-7 h-1.5 rounded-full bg-sky-400" />
+            <span className="w-7 h-1.5 rounded-full bg-emerald-400" />
+            <span className="w-7 h-1.5 rounded-full bg-amber-400" />
+            <span className="w-7 h-1.5 rounded-full bg-purple-400" />
+            <span className="w-7 h-1.5 rounded-full bg-rose-400" />
+          </div>
         </header>
         
         {isAdminAuth ? (
@@ -329,47 +372,77 @@ export function Dashboard({ appData, onSelectClass }: DashboardProps) {
               <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Todas as Turmas</h2>
               {gradesArr.map(g => {
                 const isActive = openYear === g;
-              const gradeColor = getGradeColor(g);
-              return (
-                <div key={g} style={{ '--grade-color': gradeColor } as React.CSSProperties}>
-                  <button 
-                    onClick={() => setOpenYear(isActive ? null : g)} 
-                    className={`w-full flex items-center justify-between p-6 rounded-2xl bg-white/95 backdrop-blur-sm border transition-all duration-300 ${isActive ? 'shadow-md border-slate-300 ring-1 ring-slate-200/50' : 'border-slate-100 hover:shadow-sm hover:border-slate-200'}`}
-                    style={{ borderLeftColor: isActive ? gradeColor : 'transparent', borderLeftWidth: isActive ? '4px' : '4px' }}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 relative flex items-center justify-center rounded-xl transition-all duration-300 ${isActive ? 'text-white shadow-inner' : 'bg-slate-50 text-slate-500'}`} style={{ backgroundColor: isActive ? gradeColor : undefined }}>
-                        <BookOpen className="w-5 h-5" />
-                      </div>
-                      <div className="text-left">
-                        <h3 className="text-lg font-black uppercase text-slate-800">{g}º ANO</h3>
-                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Ensino Fundamental</p>
-                      </div>
-                    </div>
-                    {isActive ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
-                  </button>
-                  
-                  {isActive && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 px-2 animate-in slide-in-from-top-2 duration-300">
-                      {lettersArr.map(l => {
-                        const classData = appData[`${g}${l}`];
-                        const count = classData?.students?.filter(s => classData[s]?.active !== false).length || 0;
-                        return (
-                          <div 
-                            key={l} 
-                            onClick={() => openPinModal(g, l)} 
-                            className="bg-white/95 backdrop-blur-sm p-5 rounded-2xl border border-slate-100 cursor-pointer hover:border-escola-azul/30 hover:shadow-md hover:-translate-y-1 text-center group transition-all"
-                          >
-                            <span className="block text-2xl font-black text-slate-800 uppercase group-hover:text-escola-azul transition-colors">{l}</span>
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{count} Alunos</span>
+                const gradeColor = getGradeColor(g);
+                const theme = getGradeTheme(g);
+                return (
+                  <div key={g} style={{ '--grade-color': gradeColor } as React.CSSProperties}>
+                    <button 
+                      onClick={() => setOpenYear(isActive ? null : g)} 
+                      className={`w-full flex items-center justify-between p-5 sm:p-6 rounded-3xl bg-white/95 backdrop-blur-sm border transition-all duration-300 ${isActive ? 'shadow-lg border-slate-300 ring-2 ring-slate-200/60' : 'border-slate-100 hover:shadow-md hover:border-slate-200'}`}
+                      style={{ borderLeftColor: gradeColor, borderLeftWidth: '6px' }}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div 
+                          className="w-12 h-12 relative flex items-center justify-center rounded-2xl text-xl shadow-xs transition-transform group-hover:scale-105"
+                          style={{ backgroundColor: `${gradeColor}18`, color: gradeColor }}
+                        >
+                          <span className="text-2xl">{theme.icon}</span>
+                        </div>
+                        <div className="text-left">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-black uppercase text-slate-800">{theme.title}</h3>
+                            <span 
+                              className="text-[9px] font-black px-2 py-0.5 rounded-full uppercase"
+                              style={{ backgroundColor: `${gradeColor}20`, color: gradeColor }}
+                            >
+                              Ensino Fundamental
+                            </span>
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                          <p className="text-[11px] font-bold text-slate-500 mt-0.5">{theme.subtitle}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:inline">
+                          {isActive ? 'Ocultar Turmas' : 'Ver Turmas'}
+                        </span>
+                        {isActive ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
+                      </div>
+                    </button>
+                    
+                    {isActive && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mt-3 px-2 animate-in slide-in-from-top-2 duration-300">
+                        {lettersArr.map(l => {
+                          const classData = appData[`${g}${l}`];
+                          const count = classData?.students?.filter(s => classData[s]?.active !== false).length || 0;
+                          return (
+                            <div 
+                              key={l} 
+                              onClick={() => openPinModal(g, l)} 
+                              className="bg-white/95 backdrop-blur-sm p-5 rounded-3xl border border-slate-100 cursor-pointer hover:shadow-lg hover:-translate-y-1 text-center group transition-all relative overflow-hidden"
+                              style={{ borderColor: `${gradeColor}30` }}
+                            >
+                              <div 
+                                className="absolute top-0 left-0 right-0 h-1.5 transition-colors"
+                                style={{ backgroundColor: gradeColor }}
+                              />
+                              <div className="text-2xl mb-1">{theme.icon}</div>
+                              <span 
+                                className="block text-2xl font-black uppercase transition-colors"
+                                style={{ color: gradeColor }}
+                              >
+                                Turma {l}
+                              </span>
+                              <span className="inline-block mt-1 text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-100 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                                {count} {count === 1 ? 'Aluno' : 'Alunos'}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

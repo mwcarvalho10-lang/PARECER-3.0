@@ -4,6 +4,7 @@ export interface Skill {
   subject: string;
   report: string;
   color: string;
+  category?: string;
 }
 
 export interface GeneratedQuestion {

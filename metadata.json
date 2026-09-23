@@ -1,5 +1,8 @@
 {
   "name": "Gestor de Pareceres 3.0",
-  "description": "",
-  "requestFramePermissions": []
+  "description": "Sistema de gestão de habilidades, avaliações com IA e geração de pareceres descritivos escolares.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

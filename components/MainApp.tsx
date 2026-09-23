@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Home, Download, Edit3, Trash2, CheckCircle2, Menu, Clock, Bell, Book, CheckSquare, Square, Layers, Sparkles, RefreshCw, UploadCloud, Camera } from 'lucide-react';
+import { Home, Download, Edit3, Trash2, CheckCircle2, Menu, Clock, Bell, Book, CheckSquare, Square, Layers, Sparkles, Check, BarChart3 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { AppData, Skill, ClassData } from '@/lib/types';
 import { units, subjects } from '@/lib/constants';
 import { generateReportText } from '@/lib/utils';
 import { StudentModal } from './StudentModal';
 import { SkillsModal } from './SkillsModal';
+import { ClassDiagnosis } from './ClassDiagnosis';
 import { Document, Packer, Paragraph, HeadingLevel, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import jsPDF from 'jspdf';
 
 interface MainAppProps {
   currentGrade: string;
@@ -43,14 +44,6 @@ export function MainApp({ currentGrade, currentLetter, appData, globalSkills, on
   const [isReportOpen, setIsReportOpen] = useState(true);
   const [isReadMode, setIsReadMode] = useState(false);
   const [templates, setTemplates] = useState<{name: string, text: string}[]>([]);
-  const [tests, setTests] = useState<import('@/lib/types').TestData[]>([]);
-
-  const [editingTestId, setEditingTestId] = useState<string | null>(null);
-  const [correctingTestId, setCorrectingTestId] = useState<string | null>(null);
-  const [testForm, setTestForm] = useState<{name: string, unit: string, skills: string[], questions: {number: number, skillId: string, generatedData?: any}[]}>({name: "", unit: "1º Bimestre", skills: [], questions: []});
-  const [correctionForm, setCorrectionForm] = useState<Record<number, boolean>>({});
-  const [isGeneratingTest, setIsGeneratingTest] = useState(false);
-  const [isCorrectingImage, setIsCorrectingImage] = useState(false);
 
   const reportRef = useRef<HTMLDivElement>(null);
 
@@ -61,68 +54,7 @@ export function MainApp({ currentGrade, currentLetter, appData, globalSkills, on
   useEffect(() => {
     const t = JSON.parse(localStorage.getItem('edu_templates_v13') || '[]');
     setTemplates(t);
-    const storedTests = JSON.parse(localStorage.getItem('edu_tests_v13') || '[]');
-    setTests(storedTests);
   }, []);
-
-  const saveTests = (newTests: import('@/lib/types').TestData[]) => {
-    setTests(newTests);
-    localStorage.setItem('edu_tests_v13', JSON.stringify(newTests));
-  };
-
-  const generatePDF = (testData: import('@/lib/types').TestData) => {
-    const doc = new jsPDF();
-    let yPos = 20;
-    const margin = 20;
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const maxWidth = pageWidth - margin * 2;
-
-    doc.setFontSize(16);
-    doc.text(testData.name.toUpperCase(), margin, yPos);
-    yPos += 10;
-    
-    doc.setFontSize(12);
-    doc.text(`Unidade: ${testData.unit} - Turma: ${currentGrade} ${currentLetter}`, margin, yPos);
-    yPos += 15;
-
-    testData.questions.forEach((q, idx) => {
-      if (yPos > 270) {
-        doc.addPage();
-        yPos = 20;
-      }
-      
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text(`Questão ${q.number}`, margin, yPos);
-      yPos += 7;
-
-      doc.setFont("helvetica", "normal");
-      if (q.generatedData && q.generatedData.text) {
-        const textLines = doc.splitTextToSize(q.generatedData.text, maxWidth);
-        doc.text(textLines, margin, yPos);
-        yPos += textLines.length * 7 + 5;
-        
-        if (q.generatedData.options) {
-          q.generatedData.options.forEach((opt: string, optIdx: number) => {
-            const letter = String.fromCharCode(65 + optIdx);
-            const optLines = doc.splitTextToSize(`${letter}) ${opt}`, maxWidth - 10);
-            if (yPos + optLines.length * 7 > 280) {
-              doc.addPage();
-              yPos = 20;
-            }
-            doc.text(optLines, margin + 5, yPos);
-            yPos += optLines.length * 7 + 2;
-          });
-        }
-      } else {
-        doc.text(`Sem dados da questão (Habilidade: ${q.skillId})`, margin, yPos);
-        yPos += 10;
-      }
-      yPos += 10;
-    });
-
-    doc.save(`${testData.name}_${currentGrade}${currentLetter}.pdf`);
-  };
 
   useEffect(() => {
     if (!classData.students.includes(selectedStudent)) {
@@ -611,8 +543,8 @@ export function MainApp({ currentGrade, currentLetter, appData, globalSkills, on
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden bg-slate-50 p-4 gap-4">
-        <aside className={`bg-white rounded-3xl border border-slate-200 flex flex-col shrink-0 transition-all duration-300 shadow-[0_8px_30px_rgb(0,0,0,0.04)] ${isSidebarOpen ? 'w-72' : 'w-0 overflow-hidden border-none opacity-0'}`}>
+      <div className="flex flex-1 overflow-hidden escolar-bg p-4 gap-4">
+        <aside className={`bg-white/95 backdrop-blur-md rounded-3xl border border-slate-200/90 flex flex-col shrink-0 transition-all duration-300 shadow-[0_8px_30px_rgb(0,0,0,0.05)] ${isSidebarOpen ? 'w-72' : 'w-0 overflow-hidden border-none opacity-0'}`}>
           <div className="w-72 flex flex-col h-full">
             <div className="p-6 pb-2">
               <div className="flex justify-between items-center mb-3">
@@ -719,508 +651,219 @@ export function MainApp({ currentGrade, currentLetter, appData, globalSkills, on
         </aside>
 
         <main className="flex-1 flex flex-col overflow-hidden bg-white rounded-3xl border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-          <nav className="h-14 bg-white border-b border-slate-100 flex items-center px-8 gap-8 shrink-0">
+          <nav className="h-14 bg-white border-b border-slate-100 flex items-center px-6 gap-6 shrink-0 overflow-x-auto">
             {subjects.map(sub => (
               <button 
                 key={sub.id} 
                 onClick={() => setActiveTab(sub.id)} 
-                className={`relative py-4 text-[11px] font-black uppercase transition-all ${activeTab === sub.id ? 'text-escola-azul' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`relative py-4 text-[11px] font-black uppercase whitespace-nowrap transition-all ${activeTab === sub.id ? 'text-escola-azul' : 'text-slate-400 hover:text-slate-600'}`}
               >
                 {sub.label}
                 {activeTab === sub.id && <div className="absolute bottom-[-4px] left-0 w-full h-[4px] bg-escola-verde rounded-t-lg" />}
               </button>
             ))}
+
             <button 
-              onClick={() => setActiveTab('assessments')} 
-              className={`relative py-4 text-[11px] font-black uppercase transition-all ml-auto ${activeTab === 'assessments' ? 'text-escola-azul' : 'text-slate-400 hover:text-slate-600'}`}
+              onClick={() => setActiveTab('diagnostico')} 
+              className={`relative py-4 text-[11px] font-black uppercase whitespace-nowrap transition-all flex items-center gap-1.5 ${activeTab === 'diagnostico' ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
             >
-              Avaliações
-              {activeTab === 'assessments' && <div className="absolute bottom-[-4px] left-0 w-full h-[4px] bg-escola-verde rounded-t-lg" />}
+              <BarChart3 className="w-4 h-4 text-indigo-500" />
+              <span>Diagnóstico da Turma</span>
+              {activeTab === 'diagnostico' && <div className="absolute bottom-[-4px] left-0 w-full h-[4px] bg-indigo-500 rounded-t-lg" />}
             </button>
           </nav>
 
-          <div className="flex-1 overflow-y-auto p-8 space-y-8">
-            {activeTab === 'assessments' ? (
+          {activeTab === 'diagnostico' ? (
+            <ClassDiagnosis
+              currentGrade={currentGrade}
+              currentLetter={currentLetter}
+              classData={classData}
+              globalSkills={globalSkills}
+              selectedUnit={selectedUnit}
+              onSelectUnit={setSelectedUnit}
+              onSelectStudent={(studentName) => {
+                setSelectedStudent(studentName);
+                setActiveTab('portugues');
+              }}
+            />
+          ) : (
+            <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
               <section>
-                <div className="flex items-center gap-4 mb-6">
-                  <h3 className="text-[10px] font-black text-escola-azul uppercase tracking-widest">Avaliações</h3>
-                  {!editingTestId && !correctingTestId && (
-                    <button onClick={() => {
-                      setEditingTestId('new');
-                      setTestForm({ name: "", unit: selectedUnit, skills: [], questions: [] });
-                    }} className="text-[9px] font-black text-escola-verde hover:underline">NOVA AVALIAÇÃO</button>
-                  )}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center text-sm shadow-xs">
+                      ✏️
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Habilidades do Bimestre</h3>
+                        <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full tabular-nums">
+                          {currentSkills.length} {currentSkills.length === 1 ? 'disponível' : 'disponíveis'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 font-medium">
+                        {isBulkMode 
+                          ? `Modo em lote ativo (${selectedStudentsBulk.length} selecionados)` 
+                          : `Estudante: ${selectedStudent || 'Nenhum selecionado'} • ${selectedUnit}`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => setSkillsModalOpen(true)} 
+                    className="self-start sm:self-auto text-[10px] font-black text-escola-azul hover:text-blue-700 bg-sky-50 hover:bg-sky-100 px-3.5 py-2 rounded-xl border border-sky-200/80 transition-all flex items-center gap-1.5 shadow-xs"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-sky-500" /> GERENCIAR HABILIDADES
+                  </button>
                 </div>
 
-                {editingTestId ? (
-                  <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-black uppercase text-slate-700">{editingTestId === 'new' ? 'Criar Avaliação' : 'Editar Avaliação'}</h4>
-                      <button onClick={() => setEditingTestId(null)} className="text-[9px] font-bold uppercase text-slate-400 hover:text-slate-600">Cancelar</button>
-                    </div>
-                    
-                    <div className="flex gap-4">
-                      <input 
-                        type="text" 
-                        value={testForm.name} 
-                        onChange={e => setTestForm({...testForm, name: e.target.value})} 
-                        placeholder="NOME DA AVALIAÇÃO" 
-                        className="flex-1 bg-slate-50 px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-escola-azul text-xs font-bold uppercase"
-                      />
-                      <select 
-                        value={testForm.unit} 
-                        onChange={e => setTestForm({...testForm, unit: e.target.value})}
-                        className="bg-slate-50 px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-escola-azul text-xs font-bold uppercase w-48"
-                      >
-                        {units.map(u => <option key={u} value={u}>{u}</option>)}
-                      </select>
-                    </div>
-
-                    <div className="space-y-4">
-                      {testForm.questions.length === 0 ? (
-                        <>
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Habilidades da Avaliação</span>
-                            <span className="text-[10px] font-bold text-slate-400">{testForm.skills.length} selecionadas</span>
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-64 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-100">
-                            {globalSkills.filter(s => s.grade === currentGrade).map(s => (
-                              <label key={s.id} className="flex items-start gap-3 p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-escola-azul">
-                                <input 
-                                  type="checkbox" 
-                                  checked={testForm.skills.includes(s.id)}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      if (testForm.skills.length >= 5) {
-                                        alert("Você pode selecionar no máximo 5 habilidades (20 questões).");
-                                        return;
-                                      }
-                                      setTestForm({...testForm, skills: [...testForm.skills, s.id]});
-                                    } else {
-                                      setTestForm({...testForm, skills: testForm.skills.filter(id => id !== s.id)});
-                                    }
-                                  }}
-                                  className="mt-1 accent-escola-azul"
-                                />
-                                <div className="flex-1">
-                                  <div className="text-[10px] font-black uppercase text-slate-700">{s.id}</div>
-                                  <div className="text-[9px] font-medium text-slate-500 leading-tight mt-1">{s.report}</div>
-                                </div>
-                              </label>
-                            ))}
-                            {globalSkills.filter(s => s.grade === currentGrade).length === 0 && (
-                                <div className="col-span-full p-4 text-center text-[10px] text-slate-400 font-bold uppercase">Nenhuma habilidade cadastrada para este ano.</div>
-                            )}
-                          </div>
-                          <div className="flex justify-end pt-2">
-                            <button 
-                              disabled={testForm.skills.length === 0 || isGeneratingTest}
-                              onClick={async () => {
-                                setIsGeneratingTest(true);
-                                try {
-                                  const selectedSkillObjects = testForm.skills.map(id => globalSkills.find(s => s.id === id)).filter(Boolean);
-                                  const res = await fetch('/api/generate-test', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ skills: selectedSkillObjects, grade: currentGrade })
-                                  });
-                                  const data = await res.json();
-                                  if (data.data) {
-                                    // Flatten the result into a questions array
-                                    let qNum = 1;
-                                    const finalQuestions: any[] = [];
-                                    data.data.forEach((skillBlock: any) => {
-                                      if (skillBlock.questions) {
-                                        skillBlock.questions.forEach((q: any) => {
-                                          finalQuestions.push({
-                                            number: qNum++,
-                                            skillId: skillBlock.skillId,
-                                            generatedData: q
-                                          });
-                                        });
-                                      }
-                                    });
-                                    setTestForm({ ...testForm, questions: finalQuestions });
-                                  }
-                                } catch (e) {
-                                  console.error(e);
-                                  alert("Erro ao gerar avaliação.");
-                                } finally {
-                                  setIsGeneratingTest(false);
-                                }
-                              }}
-                              className="bg-purple-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase shadow-md hover:bg-purple-700 transition-colors disabled:opacity-50 flex items-center gap-2"
-                            >
-                              {isGeneratingTest ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                              Gerar {testForm.skills.length * 4} Questões com IA
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Questões Geradas ({testForm.questions.length})</span>
-                            <button 
-                              onClick={() => setTestForm({...testForm, questions: []})}
-                              className="text-[9px] font-bold uppercase text-red-500 hover:underline"
-                            >
-                              Descartar e Gerar Novamente
-                            </button>
-                          </div>
-                          <div className="space-y-4 max-h-96 overflow-y-auto p-2">
-                            {testForm.questions.map((q, idx) => (
-                              <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs font-black text-slate-700">Questão {q.number}</span>
-                                  <span className="text-[9px] font-bold uppercase text-purple-600 bg-purple-100 px-2 py-1 rounded-md">{q.skillId}</span>
-                                </div>
-                                <p className="text-[11px] font-medium text-slate-800 whitespace-pre-wrap">{q.generatedData?.text}</p>
-                                <div className="space-y-2 pl-2">
-                                  {q.generatedData?.options?.map((opt: string, i: number) => (
-                                    <div key={i} className={`text-[10px] p-2 rounded-lg ${i === q.generatedData.correctAnswerIndex ? 'bg-emerald-100 text-emerald-800 font-bold border border-emerald-200' : 'bg-white text-slate-600 border border-slate-100'}`}>
-                                      {String.fromCharCode(65 + i)}) {opt}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    <div className="pt-4 flex justify-end">
-                      <button 
-                        onClick={() => {
-                          if (!testForm.name || testForm.questions.length === 0) return alert("Preencha o nome e gere as questões com IA.");
-
-                          const newTest = {
-                            id: editingTestId === 'new' ? Date.now().toString() : editingTestId,
-                            name: testForm.name,
-                            unit: testForm.unit,
-                            grade: currentGrade,
-                            questions: testForm.questions
-                          };
-                          
-                          if (editingTestId === 'new') {
-                            saveTests([...tests, newTest]);
-                          } else {
-                            saveTests(tests.map(t => t.id === editingTestId ? newTest : t));
-                          }
-                          
-                          generatePDF(newTest);
-                          
-                          setEditingTestId(null);
-                        }}
-                        className="bg-escola-azul text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase shadow-md hover:bg-blue-600 transition-colors"
-                      >
-                        Salvar Avaliação e Baixar PDF
-                      </button>
-                    </div>
-                  </div>
-                ) : correctingTestId ? (
-                  <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-                    {(() => {
-                      const t = tests.find(test => test.id === correctingTestId);
-                      if (!t) return null;
+                {subjectSubFilters[activeTab] && subjectSubFilters[activeTab].length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {subjectSubFilters[activeTab].map(filter => {
+                      const isSelected = activeSubFilter === filter.id;
                       return (
-                        <>
-                          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                            <div>
-                              <h4 className="text-sm font-black uppercase text-slate-800">{t.name}</h4>
-                              <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">{t.unit} • Corrigindo: <span className="text-escola-azul">{selectedStudent || 'Nenhum estudante selecionado'}</span></p>
-                            </div>
-                            <button onClick={() => setCorrectingTestId(null)} className="text-[9px] font-bold uppercase text-slate-400 hover:text-slate-600">Fechar Corretor</button>
-                          </div>
-                          
-                          {!selectedStudent ? (
-                            <div className="text-center p-8 bg-slate-50 rounded-2xl border border-slate-100 text-slate-500 text-xs font-bold uppercase">
-                              Selecione um estudante na barra lateral para começar a correção.
-                            </div>
-                          ) : (
-                            <div className="space-y-6">
-                              <div className="flex flex-col md:flex-row gap-6">
-                                <div className="flex-1 space-y-4">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Respostas (Correção Manual)</span>
-                                  </div>
-                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                                    {t.questions.map(q => {
-                                      const isChecked = correctionForm[q.number] || false;
-                                      const sInfo = globalSkills.find(s => s.id === q.skillId);
-                                      return (
-                                        <div 
-                                          key={q.number}
-                                          onClick={() => setCorrectionForm({...correctionForm, [q.number]: !isChecked})}
-                                          className={`p-4 rounded-2xl border cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${isChecked ? 'bg-emerald-50 border-emerald-200 shadow-inner' : 'bg-white border-slate-200 hover:border-slate-300'}`}
-                                          title={sInfo?.report}
-                                        >
-                                          <span className={`text-[10px] font-black uppercase ${isChecked ? 'text-emerald-700' : 'text-slate-400'}`}>Q{q.number}</span>
-                                          <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 ${isChecked ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 text-transparent'}`}>
-                                            <CheckCircle2 className="w-4 h-4" />
-                                          </div>
-                                          <span className="text-[8px] font-bold text-slate-500 truncate w-full text-center">{q.skillId || 'Sem Hab.'}</span>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                                <div className="w-full md:w-64 space-y-4 bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-center items-center text-center">
-                                  <Camera className="w-8 h-8 text-slate-300 mb-2" />
-                                  <div>
-                                    <h5 className="text-[10px] font-black uppercase text-slate-600">Correção Automática</h5>
-                                    <p className="text-[9px] font-medium text-slate-400 mt-1">Envie a foto do gabarito preenchido pelo aluno para corrigir com IA.</p>
-                                  </div>
-                                  <label className="cursor-pointer bg-escola-azul text-white px-4 py-3 rounded-xl text-[10px] font-black uppercase shadow-md hover:bg-blue-600 transition-colors w-full flex items-center justify-center gap-2">
-                                    {isCorrectingImage ? <RefreshCw className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
-                                    {isCorrectingImage ? 'Analisando...' : 'Enviar Foto'}
-                                    <input 
-                                      type="file" 
-                                      accept="image/*" 
-                                      className="hidden" 
-                                      disabled={isCorrectingImage}
-                                      onChange={async (e) => {
-                                        if (e.target.files && e.target.files.length > 0) {
-                                          setIsCorrectingImage(true);
-                                          const file = e.target.files[0];
-                                          const reader = new FileReader();
-                                          reader.onloadend = async () => {
-                                            const base64Data = (reader.result as string).split(',')[1];
-                                            const mimeType = file.type;
-                                            try {
-                                              const res = await fetch('/api/correct-test', {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ 
-                                                  imageBase64: base64Data, 
-                                                  mimeType, 
-                                                  testQuestions: t.questions.map(q => ({ number: q.number, correctAnswerIndex: q.generatedData?.correctAnswerIndex }))
-                                                })
-                                              });
-                                              const resData = await res.json();
-                                              if (resData.data) {
-                                                const newForm = { ...correctionForm };
-                                                resData.data.forEach((item: any) => {
-                                                  if (item.questionNumber) {
-                                                    newForm[item.questionNumber] = !!item.isCorrect;
-                                                  }
-                                                });
-                                                setCorrectionForm(newForm);
-                                              }
-                                            } catch (err) {
-                                              console.error(err);
-                                              alert("Erro ao analisar a imagem.");
-                                            } finally {
-                                              setIsCorrectingImage(false);
-                                            }
-                                          };
-                                          reader.readAsDataURL(file);
-                                        }
-                                      }}
-                                    />
-                                  </label>
-                                </div>
-                              </div>
-
-                              <div className="pt-4 flex justify-end">
-                                <button 
-                                  onClick={() => {
-                                    const studentData = { ...classData[selectedStudent] };
-                                    if (!studentData[t.unit]) {
-                                      studentData[t.unit] = { skills: [], observation: "" };
-                                    }
-                                    
-                                    const currentSkillsOfUnit = [...(studentData[t.unit].skills || [])];
-                                    
-                                    // Add correctly answered skills
-                                    t.questions.forEach(q => {
-                                      if (correctionForm[q.number] && q.skillId) {
-                                        if (!currentSkillsOfUnit.includes(q.skillId)) {
-                                          currentSkillsOfUnit.push(q.skillId);
-                                        }
-                                      }
-                                    });
-
-                                    studentData[t.unit].skills = currentSkillsOfUnit;
-                                    
-                                    const updatedClassData = {
-                                      ...classData,
-                                      [selectedStudent]: studentData
-                                    };
-                                    
-                                    onUpdateAppData({
-                                      ...appData,
-                                      [classKey]: updatedClassData
-                                    });
-
-                                    // Generate the report via utility directly if we had a dedicated generate just for this, but since the text updates based on skills automatically if they click 'Gerar Parecer' later, we can just optionally update text here or let them click the robot. We'll generate it now.
-                                    
-                                    const skillTexts = currentSkillsOfUnit.map(id => globalSkills.find(s => s.id === id)?.report || '').filter(Boolean);
-                                    const newText = generateReportText(selectedStudent, studentData.gender || 'M', t.unit, skillTexts);
-                                    
-                                    // Also apply to observation so it's saved!
-                                    updatedClassData[selectedStudent][t.unit].observation = newText;
-                                    onUpdateAppData({
-                                      ...appData,
-                                      [classKey]: updatedClassData
-                                    });
-                                    
-                                    setCorrectionForm({});
-                                    setCorrectingTestId(null);
-                                    setActiveTab('portugues'); // go back to main to see the updated text
-                                  }}
-                                  className="bg-emerald-500 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase shadow-md hover:bg-emerald-600 transition-colors flex items-center gap-2"
-                                >
-                                  <CheckSquare className="w-4 h-4" /> Finalizar Correção e Gerar Parecer
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </>
+                        <motion.button
+                          key={filter.id}
+                          whileHover={{ scale: 1.04 }}
+                          whileTap={{ scale: 0.96 }}
+                          onClick={() => setActiveSubFilter(filter.id)}
+                          className={`px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${
+                            isSelected 
+                              ? 'bg-slate-800 text-white shadow-sm ring-2 ring-slate-800/20' 
+                              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+                          }`}
+                        >
+                          {filter.label}
+                        </motion.button>
                       );
-                    })()}
+                    })}
+                  </div>
+                )}
+
+                {currentSkills.length === 0 ? (
+                  <div className="p-12 text-center bg-slate-50/80 rounded-3xl border border-dashed border-slate-200 flex flex-col items-center justify-center">
+                    <span className="text-4xl mb-3">🎨</span>
+                    <h4 className="text-sm font-black uppercase text-slate-700">Nenhuma habilidade encontrada</h4>
+                    <p className="text-xs text-slate-400 mt-1 max-w-sm">
+                      Não há habilidades cadastradas para este filtro ou matéria. Clique abaixo para cadastrar ou gerenciar.
+                    </p>
+                    <button
+                      onClick={() => setSkillsModalOpen(true)}
+                      className="mt-4 px-4 py-2 bg-escola-azul text-white text-xs font-black uppercase rounded-xl hover:bg-blue-600 transition-all shadow-sm"
+                    >
+                      Adicionar Habilidades
+                    </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {tests.filter(t => t.grade === currentGrade).length === 0 ? (
-                      <div className="col-span-full p-8 text-center text-slate-400 font-bold text-xs uppercase bg-slate-50 rounded-2xl border border-slate-200">
-                        Nenhuma avaliação cadastrada para este ano.
-                      </div>
-                    ) : (
-                      tests.filter(t => t.grade === currentGrade).map(t => (
-                        <div key={t.id} className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col hover:shadow-md transition-shadow">
-                          <div className="mb-4">
-                            <h4 className="text-sm font-black uppercase text-slate-800">{t.name}</h4>
-                            <p className="text-[10px] font-bold text-escola-azul uppercase mt-1">{t.unit} • {t.questions.length} Questões</p>
-                          </div>
-                          
-                          <div className="mt-auto flex gap-2">
-                            <button 
-                              onClick={() => {
-                                setCorrectingTestId(t.id);
-                                setCorrectionForm({});
-                              }}
-                              className="flex-1 bg-escola-verde/10 text-escola-verde hover:bg-escola-verde hover:text-white px-3 py-2 rounded-xl text-[9px] font-black uppercase transition-colors text-center"
-                            >
-                              Corrigir Turma
-                            </button>
-                            <button 
-                              onClick={() => {
-                                generatePDF(t);
-                              }}
-                              className="w-10 h-10 flex items-center justify-center bg-blue-50 text-blue-500 hover:bg-blue-100 rounded-xl transition-colors"
-                              title="Baixar PDF da Prova"
-                            >
-                              <Download className="w-4 h-4" />
-                            </button>
-                            <button 
-                              onClick={() => {
-                                setEditingTestId(t.id);
-                                setTestForm({ name: t.name, unit: t.unit, skills: Array.from(new Set(t.questions.map((q: any) => q.skillId))), questions: t.questions });
-                              }}
-                              className="w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-xl transition-colors"
-                            >
-                              <Edit3 className="w-4 h-4" />
-                            </button>
-                            <button 
-                              onClick={() => {
-                                if (confirm("Excluir esta avaliação?")) {
-                                  saveTests(tests.filter(test => test.id !== t.id));
-                                }
-                              }}
-                              className="w-10 h-10 flex items-center justify-center bg-red-50 text-red-500 hover:bg-red-100 rounded-xl transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                    )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
+                    <AnimatePresence mode="popLayout">
+                      {currentSkills.map((s, idx) => {
+                        let isSet = false;
+                        
+                        if (isBulkMode) {
+                          if (selectedStudentsBulk.length > 0) {
+                            isSet = classData[selectedStudentsBulk[0]]?.[selectedUnit]?.skills?.includes(s.id);
+                          }
+                        } else {
+                          isSet = currentStudentData?.skills?.includes(s.id) || false;
+                        }
+
+                        let usedInOtherUnit = "";
+                        if (!isBulkMode && !isSet && selectedStudent) {
+                          for (const u of units) {
+                            if (u !== selectedUnit && classData[selectedStudent]?.[u]?.skills?.includes(s.id)) {
+                              usedInOtherUnit = u;
+                              break;
+                            }
+                          }
+                        }
+                        
+                        return (
+                          <motion.div 
+                            key={s.id} 
+                            layout
+                            initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ 
+                              duration: 0.22, 
+                              ease: [0.16, 1, 0.3, 1], 
+                              delay: Math.min(idx * 0.012, 0.15) 
+                            }}
+                            whileHover={{ 
+                              scale: 1.025, 
+                              y: -3,
+                              transition: { duration: 0.16, ease: "easeOut" } 
+                            }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => toggleSkill(s.id)} 
+                            className={`group relative p-4 rounded-2xl cursor-pointer transition-colors duration-200 flex flex-col justify-between gap-3 border select-none ${
+                              isSet 
+                                ? 'bg-gradient-to-br from-emerald-50/90 via-white to-emerald-50/40 border-emerald-500 ring-2 ring-emerald-500/25 shadow-md shadow-emerald-500/10' 
+                                : 'bg-white/95 backdrop-blur-xs border-slate-200/90 hover:border-slate-300 hover:shadow-md hover:shadow-slate-200/60'
+                            }`}
+                            style={{
+                              borderLeftColor: s.color || (isSet ? '#10b981' : '#0ea5e9'),
+                              borderLeftWidth: '5px'
+                            }}
+                          >
+                            <div className="flex items-center justify-between w-full gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span 
+                                  className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" 
+                                  style={{ backgroundColor: s.color || '#0ea5e9' }} 
+                                />
+                                <span className={`text-[11px] font-black uppercase tracking-wider font-mono ${isSet ? 'text-emerald-700' : 'text-slate-700'}`}>
+                                  {s.id}
+                                </span>
+                                {usedInOtherUnit && (
+                                  <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200/80 text-[8px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
+                                    <span>📌</span> {usedInOtherUnit}
+                                  </span>
+                                )}
+                              </div>
+                              
+                              <div className="shrink-0 flex items-center justify-center">
+                                {isSet ? (
+                                  <motion.div
+                                    initial={{ scale: 0, rotate: -25 }}
+                                    animate={{ scale: 1, rotate: 0 }}
+                                    transition={{ type: "spring", stiffness: 500, damping: 24 }}
+                                    className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-xs"
+                                  >
+                                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                  </motion.div>
+                                ) : (
+                                  <div className="w-6 h-6 rounded-full border-2 border-slate-300 group-hover:border-slate-400 group-hover:bg-slate-50 transition-colors flex items-center justify-center" />
+                                )}
+                              </div>
+                            </div>
+
+                            <p className={`text-[12px] leading-relaxed font-medium transition-colors ${isSet ? 'text-slate-900 font-semibold' : 'text-slate-600'}`}>
+                              {s.report}
+                            </p>
+
+                            <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[10px]">
+                              <span className="text-slate-400 font-semibold truncate max-w-[160px]">
+                                {s.category || `${s.grade}º Ano • BNCC`}
+                              </span>
+                              <span className={`font-bold transition-colors ${isSet ? 'text-emerald-600' : 'text-slate-400 group-hover:text-slate-600'}`}>
+                                {isSet ? '✓ Marcada' : '+ Marcar'}
+                              </span>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </AnimatePresence>
                   </div>
                 )}
               </section>
-            ) : (
-              <section>
-                <div className="flex items-center gap-4 mb-4">
-                  <h3 className="text-[10px] font-black text-escola-azul uppercase tracking-widest">Habilidades</h3>
-                  <button onClick={() => setSkillsModalOpen(true)} className="text-[9px] font-black text-escola-verde hover:underline">GERENCIAR HABILIDADES</button>
-                </div>
-
-              {subjectSubFilters[activeTab] && subjectSubFilters[activeTab].length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {subjectSubFilters[activeTab].map(filter => (
-                    <button
-                      key={filter.id}
-                      onClick={() => setActiveSubFilter(filter.id)}
-                      className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase transition-all ${activeSubFilter === filter.id ? 'bg-slate-800 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-                    >
-                      {filter.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                {currentSkills.map(s => {
-                  let isSet = false;
-                  
-                  if (isBulkMode) {
-                    if (selectedStudentsBulk.length > 0) {
-                      // Check if the first selected student has this skill
-                      isSet = classData[selectedStudentsBulk[0]]?.[selectedUnit]?.skills.includes(s.id);
-                    }
-                  } else {
-                    isSet = currentStudentData?.skills.includes(s.id) || false;
-                  }
-
-                  let usedInOtherUnit = "";
-                  if (!isBulkMode && !isSet && selectedStudent) {
-                    for (const u of units) {
-                      if (u !== selectedUnit && classData[selectedStudent]?.[u]?.skills?.includes(s.id)) {
-                        usedInOtherUnit = u;
-                        break;
-                      }
-                    }
-                  }
-                  
-                  return (
-                    <div 
-                      key={s.id} 
-                      onClick={() => toggleSkill(s.id)} 
-                      className={`group relative p-4 bg-white border cursor-pointer transition-all duration-300 ease-in-out flex flex-col gap-2 rounded-2xl ${isSet ? 'border-escola-verde ring-1 ring-escola-verde/20 shadow-md scale-[1.02]' : 'border-slate-100 hover:border-slate-300 hover:shadow-sm'}`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color || '#cbd5e1' }} />
-                          <span className={`text-[10px] font-black uppercase ${isSet ? 'text-escola-verde' : 'text-slate-500'}`}>
-                            {s.id}
-                          </span>
-                          {usedInOtherUnit && (
-                            <span className="bg-amber-50 text-amber-600 border border-amber-200 text-[8px] px-1.5 py-0.5 rounded uppercase tracking-wider font-bold">
-                              {usedInOtherUnit}
-                            </span>
-                          )}
-                        </div>
-                        {isSet && (
-                          <div className="animate-in fade-in zoom-in duration-300">
-                            <CheckCircle2 className="w-4 h-4 text-escola-verde shrink-0" />
-                          </div>
-                        )}
-                      </div>
-                      <p className={`text-[11px] leading-relaxed font-medium transition-colors duration-300 ${isSet ? 'text-slate-800' : 'text-slate-500'}`}>
-                        {s.report}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-            )}
-          </div>
+            </div>
+          )}
         </main>
         
         {/* Floating Report Panel */}
-        <div className={`fixed bottom-6 right-6 w-[450px] bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-200 z-50 flex flex-col transition-all duration-500 transform ${isReportOpen ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0 pointer-events-none'}`}>
+        <div className={`fixed bottom-6 right-6 w-[450px] bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-200 z-50 flex flex-col transition-all duration-500 transform ${isReportOpen && activeTab !== 'diagnostico' ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0 pointer-events-none'}`}>
           <div className="bg-slate-900 p-4 flex justify-between items-center text-white rounded-t-3xl cursor-pointer" onClick={() => setIsReportOpen(false)}>
             <div className="flex items-center gap-2">
               <Edit3 className="w-4 h-4 text-escola-verde" />
