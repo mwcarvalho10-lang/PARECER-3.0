@@ -42,6 +42,7 @@ export interface StudentData {
 
 export interface ClassData {
   students: string[];
+  plannedSkills?: Record<string, string[]>; // { [unit: string]: string[] } - Habilidades planejadas por bimestre/unidade
   [studentName: string]: any; // StudentData | string[]
 }
 
@@ -53,4 +54,23 @@ export interface Teacher {
 
 export interface AppData {
   [classKey: string]: ClassData;
+}
+
+export interface SchoolYearArchive {
+  year: string; // e.g. "2025", "2026"
+  closedAt: string; // ISO date timestamp
+  closedBy?: string;
+  notes?: string;
+  data: AppData;
+  totalStudents: number;
+  totalClasses: number;
+  totalEvaluations: number;
+}
+
+export type TransitionMode = 'promotion' | 'keep_students' | 'clean_slate';
+
+export interface YearTransitionOptions {
+  newYear: string;
+  mode: TransitionMode;
+  notes?: string;
 }

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Home, Download, Edit3, Trash2, CheckCircle2, Menu, Clock, Bell, Book, CheckSquare, Square, Layers, Sparkles, Check, BarChart3, Search, BookOpen, HeartHandshake } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Home, Download, Edit3, Trash2, CheckCircle2, Menu, Clock, Bell, Book, CheckSquare, Square, Layers, Sparkles, Check, BarChart3, Search, BookOpen, HeartHandshake, SlidersHorizontal, Target, Pin } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppData, Skill, ClassData } from '@/lib/types';
 import { units, subjects } from '@/lib/constants';
@@ -9,7 +9,8 @@ import { SkillsModal } from './SkillsModal';
 import { ClassDiagnosis } from './ClassDiagnosis';
 import { SchoolLogo } from './SchoolLogo';
 import { PhraseBankModal } from './PhraseBankModal';
-import { QuickSkillSearchModal } from './QuickSkillSearchModal';
+import { UnitSkillsOrganizerModal } from './UnitSkillsOrganizerModal';
+import { getPlannedSkillsForUnit, getAllUnitsForSkill, savePlannedSkillsInAppData } from '@/lib/curriculumUtils';
 import { Document, Packer, Paragraph, HeadingLevel, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
@@ -19,14 +20,26 @@ interface MainAppProps {
   currentLetter: string;
   appData: AppData;
   globalSkills: Skill[];
+  viewingYear?: string;
+  isViewingArchive?: boolean;
   onGoBack: () => void;
   onUpdateAppData: (newData: AppData) => void;
   onUpdateGlobalSkills: (newSkills: Skill[]) => void;
 }
 
-export function MainApp({ currentGrade, currentLetter, appData, globalSkills, onGoBack, onUpdateAppData, onUpdateGlobalSkills }: MainAppProps) {
+export function MainApp({ 
+  currentGrade, 
+  currentLetter, 
+  appData, 
+  globalSkills, 
+  viewingYear = '2026',
+  isViewingArchive = false,
+  onGoBack, 
+  onUpdateAppData, 
+  onUpdateGlobalSkills 
+}: MainAppProps) {
   const classKey = `${currentGrade}${currentLetter}`;
-  const classData: ClassData = appData[classKey] || { students: [] };
+  const classData: ClassData = useMemo(() => appData[classKey] || { students: [] }, [appData, classKey]);
 
   const [selectedStudent, setSelectedStudent] = useState<string>(classData.students[0] || "");
   const [selectedUnit, setSelectedUnit] = useState<string>("Diagnóstica");
@@ -38,10 +51,11 @@ export function MainApp({ currentGrade, currentLetter, appData, globalSkills, on
   const [studentModalOpen, setStudentModalOpen] = useState(false);
   const [studentToEdit, setStudentToEdit] = useState("");
   const [skillsModalOpen, setSkillsModalOpen] = useState(false);
+  const [unitOrganizerOpen, setUnitOrganizerOpen] = useState(false);
+  const [unitScopeFilter, setUnitScopeFilter] = useState<'unit_only' | 'all'>('unit_only');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isProgressOpen, setIsProgressOpen] = useState(false);
 
-  const [isQuickSearchOpen, setIsQuickSearchOpen] = useState(false);
   const [isPhraseBankOpen, setIsPhraseBankOpen] = useState(false);
 
   const [isBulkMode, setIsBulkMode] = useState(false);
@@ -67,18 +81,6 @@ export function MainApp({ currentGrade, currentLetter, appData, globalSkills, on
       setSelectedStudent(classData.students[0] || "");
     }
   }, [classData.students, selectedStudent]);
-
-  // Global keyboard shortcut for Quick Skills Search: Ctrl+K or Cmd+K
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setIsQuickSearchOpen(prev => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   const handleAddStudent = (
     name: string, 
@@ -353,39 +355,144 @@ export function MainApp({ currentGrade, currentLetter, appData, globalSkills, on
 
   const currentStudentData = selectedStudent ? classData[selectedStudent][selectedUnit] : null;
   
-  const subjectSubFilters: Record<string, { id: string, label: string, match: (id: string) => boolean }[]> = {
-    portugues: currentGrade === '1' ? [
-      { id: 'all', label: 'Todas', match: () => true },
-      { id: 'leitura', label: 'Leitura (1-3)', match: (id: string) => { const m = id.match(/\d+$/); if(!m) return false; const n = parseInt(m[0], 10); return n >= 1 && n <= 3; } },
-      { id: 'producao', label: 'Produção de Texto (4-9)', match: (id: string) => { const m = id.match(/\d+$/); if(!m) return false; const n = parseInt(m[0], 10); return n >= 4 && n <= 9; } },
-      { id: 'oralidade', label: 'Comunicação Oral (10)', match: (id: string) => { const m = id.match(/\d+$/); if(!m) return false; const n = parseInt(m[0], 10); return n === 10; } },
-      { id: 'analise', label: 'Análise e Reflexão (11-17)', match: (id: string) => { const m = id.match(/\d+$/); if(!m) return false; const n = parseInt(m[0], 10); return n >= 11 && n <= 17; } },
-    ] : [],
-    matematica: currentGrade === '1' ? [
-      { id: 'all', label: 'Todas', match: () => true },
-      { id: 'aprendizagens', label: 'Aprendizagens Gerais (1)', match: (id: string) => { const m = id.match(/\d+$/); if(!m) return false; const n = parseInt(m[0], 10); return n === 1; } },
-      { id: 'numeros', label: 'Números e Operações (2-7)', match: (id: string) => { const m = id.match(/\d+$/); if(!m) return false; const n = parseInt(m[0], 10); return n >= 2 && n <= 7; } },
-      { id: 'espaco', label: 'Espaço e Forma (8-9)', match: (id: string) => { const m = id.match(/\d+$/); if(!m) return false; const n = parseInt(m[0], 10); return n >= 8 && n <= 9; } },
-      { id: 'grandezas', label: 'Grandezas e Medidas (10-12)', match: (id: string) => { const m = id.match(/\d+$/); if(!m) return false; const n = parseInt(m[0], 10); return n >= 10 && n <= 12; } },
-      { id: 'tratamento', label: 'Tratamento da Informação (13-14)', match: (id: string) => { const m = id.match(/\d+$/); if(!m) return false; const n = parseInt(m[0], 10); return n >= 13 && n <= 14; } },
-    ] : [],
-    historia: [
-      { id: 'all', label: 'Todas', match: () => true },
-      { id: 'historia', label: 'História', match: (id: string) => id.includes('HI') },
-      { id: 'geografia', label: 'Geografia', match: (id: string) => id.includes('GE') },
-    ]
+  const getSubFilters = (): { id: string; label: string; match: (id: string, s?: Skill) => boolean }[] => {
+    const relevantSkills = globalSkills.filter(s => s.subject === activeTab && s.grade === currentGrade);
+    const customCategories = Array.from(new Set(relevantSkills.map(s => s.category).filter(Boolean))) as string[];
+    
+    if (customCategories.length > 0) {
+      return [
+        { id: 'all', label: 'Todas', match: () => true },
+        ...customCategories.map(cat => ({
+          id: cat,
+          label: cat,
+          match: (_id: string, s?: Skill) => s?.category === cat
+        }))
+      ];
+    }
+
+    if (activeTab === 'portugues') {
+      if (currentGrade === '1') {
+        return [
+          { id: 'all', label: 'Todas', match: () => true },
+          { id: 'leitura', label: 'Leitura (1-3)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 1 && n <= 3; } },
+          { id: 'producao', label: 'Produção de Texto (4-9)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 4 && n <= 9; } },
+          { id: 'oralidade', label: 'Comunicação Oral (10)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n === 10; } },
+          { id: 'analise', label: 'Análise e Reflexão (11-17)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 11 && n <= 17; } },
+        ];
+      } else if (currentGrade === '2') {
+        return [
+          { id: 'all', label: 'Todas', match: () => true },
+          { id: 'leitura', label: 'Leitura & Compreensão (1-6)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 1 && n <= 6; } },
+          { id: 'producao', label: 'Produção & Revisão (7-8)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 7 && n <= 8; } },
+          { id: 'oralidade', label: 'Comunicação Oral (9-10)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 9 && n <= 10; } },
+          { id: 'escrita_orto', label: 'Escrita & Ortografia (11-20)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 11 && n <= 20; } },
+        ];
+      } else if (currentGrade === '3') {
+        return [
+          { id: 'all', label: 'Todas', match: () => true },
+          { id: 'leitura', label: 'Leitura & Compreensão (1-5)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 1 && n <= 5; } },
+          { id: 'producao', label: 'Produção & Reescrita (6-13)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 6 && n <= 13; } },
+          { id: 'oralidade', label: 'Comunicação Oral (14-15)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 14 && n <= 15; } },
+          { id: 'analise', label: 'Análise Linguística (16-22)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 16 && n <= 22; } },
+        ];
+      } else {
+        return [
+          { id: 'all', label: 'Todas', match: () => true },
+          { id: 'leitura', label: 'Leitura e Fluência (1-5)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 1 && n <= 5; } },
+          { id: 'producao', label: 'Produção Textual (6-12)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 6 && n <= 12; } },
+          { id: 'oralidade', label: 'Comunicação Oral (13-14)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 13 && n <= 14; } },
+          { id: 'analise', label: 'Gramática & Ortografia (15+)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 15; } },
+        ];
+      }
+    }
+
+    if (activeTab === 'matematica') {
+      if (currentGrade === '1') {
+        return [
+          { id: 'all', label: 'Todas', match: () => true },
+          { id: 'aprendizagens', label: 'Aprendizagens Gerais (1)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n === 1; } },
+          { id: 'numeros', label: 'Números e Operações (2-7)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 2 && n <= 7; } },
+          { id: 'espaco', label: 'Espaço e Forma (8-9)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 8 && n <= 9; } },
+          { id: 'grandezas', label: 'Grandezas e Medidas (10-12)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 10 && n <= 12; } },
+          { id: 'tratamento', label: 'Tratamento da Informação (13-14)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 13 && n <= 14; } },
+        ];
+      } else {
+        return [
+          { id: 'all', label: 'Todas', match: () => true },
+          { id: 'gerais', label: 'Resolução & Conceitos (1-2)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 1 && n <= 2; } },
+          { id: 'numeros', label: 'Números & Operações (3-7)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 3 && n <= 7; } },
+          { id: 'geometria', label: 'Geometria & Espaço (8-9)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 8 && n <= 9; } },
+          { id: 'grandezas', label: 'Grandezas & Medidas (10-12)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 10 && n <= 12; } },
+          { id: 'estatistica', label: 'Estatística & Gráficos (13+)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 13; } },
+        ];
+      }
+    }
+
+    if (activeTab === 'historia') {
+      return [
+        { id: 'all', label: 'Todas', match: () => true },
+        { id: 'historia', label: 'História (HI)', match: (id: string) => id.includes('HI') },
+        { id: 'geografia', label: 'Geografia (GE)', match: (id: string) => id.includes('GE') },
+      ];
+    }
+
+    if (activeTab === 'ciencias') {
+      return [
+        { id: 'all', label: 'Todas', match: () => true },
+        { id: 'materia', label: 'Matéria & Energia (1)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n === 1; } },
+        { id: 'vida', label: 'Vida & Meio Ambiente (2)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n === 2; } },
+        { id: 'terra', label: 'Terra, Universo & Ciência (3+)', match: (id: string) => { const n = parseInt(id.match(/\d+$/)?.[0] || '0', 10); return n >= 3; } },
+      ];
+    }
+
+    return [];
   };
 
-  let currentSkills = globalSkills
-    .filter(s => s.subject === activeTab && s.grade === currentGrade)
-    .sort((a, b) => a.id.localeCompare(b.id));
+  const currentSubFilters = getSubFilters();
 
-  if (subjectSubFilters[activeTab] && subjectSubFilters[activeTab].length > 0) {
-    const activeFilterObj = subjectSubFilters[activeTab].find(f => f.id === activeSubFilter);
+  const plannedSkillIdsForUnit = useMemo(() => {
+    return getPlannedSkillsForUnit(classData, currentGrade, selectedUnit, globalSkills);
+  }, [classData, currentGrade, selectedUnit, globalSkills]);
+
+  const allSubjectSkills = useMemo(() => {
+    return globalSkills
+      .filter(s => s.subject === activeTab && s.grade === currentGrade)
+      .sort((a, b) => a.id.localeCompare(b.id));
+  }, [globalSkills, activeTab, currentGrade]);
+
+  const plannedInThisSubject = useMemo(() => {
+    return allSubjectSkills.filter(s => plannedSkillIdsForUnit.includes(s.id));
+  }, [allSubjectSkills, plannedSkillIdsForUnit]);
+
+  let currentSkills = allSubjectSkills;
+
+  if (unitScopeFilter === 'unit_only') {
+    currentSkills = plannedInThisSubject;
+  }
+
+  if (currentSubFilters.length > 0) {
+    const activeFilterObj = currentSubFilters.find(f => f.id === activeSubFilter);
     if (activeFilterObj && activeFilterObj.id !== 'all') {
-      currentSkills = currentSkills.filter(s => activeFilterObj.match(s.id));
+      currentSkills = currentSkills.filter(s => activeFilterObj.match(s.id, s));
     }
   }
+
+  const handleToggleSkillPlannedInUnit = (skillId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const next = plannedSkillIdsForUnit.includes(skillId)
+      ? plannedSkillIdsForUnit.filter(id => id !== skillId)
+      : [...plannedSkillIdsForUnit, skillId];
+    
+    const updated = savePlannedSkillsInAppData(
+      appData,
+      currentGrade,
+      currentLetter,
+      selectedUnit,
+      next,
+      false
+    );
+    onUpdateAppData(updated);
+  };
 
   const subjectOrder = ['portugues', 'matematica', 'ciencias', 'historia'];
 
@@ -521,8 +628,13 @@ export function MainApp({ currentGrade, currentLetter, appData, globalSkills, on
           <div className="flex items-center gap-3 border-l border-slate-200 pl-3">
             <SchoolLogo size="sm" showText={false} />
             <div>
-              <h1 className="text-sm font-black uppercase font-serif tracking-tight text-slate-900 leading-tight">
-                {currentGrade}º ANO &quot;{currentLetter}&quot;
+              <h1 className="text-sm font-black uppercase font-serif tracking-tight text-slate-900 leading-tight flex items-center gap-1.5">
+                <span>{currentGrade}º ANO &quot;{currentLetter}&quot;</span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                  isViewingArchive ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-100 text-emerald-800'
+                }`}>
+                  {isViewingArchive ? `Arquivo ${viewingYear}` : viewingYear}
+                </span>
               </h1>
               <p className="text-[9px] text-escola-azul font-bold uppercase tracking-wider">
                 E. M. Raymundo Lemos Santana
@@ -774,9 +886,11 @@ export function MainApp({ currentGrade, currentLetter, appData, globalSkills, on
               currentGrade={currentGrade}
               currentLetter={currentLetter}
               classData={classData}
+              appData={appData}
               globalSkills={globalSkills}
               selectedUnit={selectedUnit}
               onSelectUnit={setSelectedUnit}
+              onUpdateAppData={onUpdateAppData}
               onSelectStudent={(studentName) => {
                 setSelectedStudent(studentName);
                 setActiveTab('portugues');
@@ -785,50 +899,82 @@ export function MainApp({ currentGrade, currentLetter, appData, globalSkills, on
           ) : (
             <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
               <section>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-3 border-b border-slate-100">
+                {/* Bimestre Curriculum Filter & Organizer Bar */}
+                <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 p-4 sm:p-5 rounded-3xl text-white shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-5">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center text-sm shadow-xs">
-                      ✏️
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                      <Target className="w-5 h-5" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Habilidades do Bimestre</h3>
-                        <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full tabular-nums">
-                          {currentSkills.length} {currentSkills.length === 1 ? 'disponível' : 'disponíveis'}
+                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
+                          {selectedUnit} • Planejamento Curricular
+                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-white border border-white/10">
+                          {plannedInThisSubject.length} de {allSubjectSkills.length} nesta matéria
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-400 font-medium">
+                      <h3 className="text-sm sm:text-base font-black uppercase font-serif tracking-tight text-white mt-0.5">
+                        Habilidades da Unidade
+                      </h3>
+                      <p className="text-[11px] text-slate-300 font-medium">
                         {isBulkMode 
                           ? `Modo em lote ativo (${selectedStudentsBulk.length} selecionados)` 
-                          : `Estudante: ${selectedStudent || 'Nenhum selecionado'} • ${selectedUnit}`}
+                          : `Estudante: ${selectedStudent || 'Nenhum selecionado'}`}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                  <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-between md:justify-end">
+                    {/* Segmented Filter Mode */}
+                    <div className="flex items-center bg-white/10 p-1 rounded-2xl border border-white/10">
+                      <button
+                        onClick={() => setUnitScopeFilter('unit_only')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-1.5 ${
+                          unitScopeFilter === 'unit_only'
+                            ? 'bg-emerald-500 text-white shadow-xs'
+                            : 'text-slate-300 hover:text-white'
+                        }`}
+                        title="Ver apenas as habilidades escolhidas para esta unidade"
+                      >
+                        <Target className="w-3.5 h-3.5" />
+                        <span>Trabalhadas na Unidade ({plannedInThisSubject.length})</span>
+                      </button>
+                      <button
+                        onClick={() => setUnitScopeFilter('all')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-1.5 ${
+                          unitScopeFilter === 'all'
+                            ? 'bg-white text-slate-900 shadow-xs'
+                            : 'text-slate-300 hover:text-white'
+                        }`}
+                        title="Ver todas as habilidades cadastradas para o ano"
+                      >
+                        <span>Todas ({allSubjectSkills.length})</span>
+                      </button>
+                    </div>
+
                     <button 
-                      onClick={() => setIsQuickSearchOpen(true)} 
-                      className="text-[10px] font-black text-slate-700 hover:text-escola-azul bg-white hover:bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200/90 transition-all flex items-center gap-2 shadow-xs group"
-                      title="Atalho: Ctrl + K ou Cmd + K"
+                      onClick={() => setUnitOrganizerOpen(true)} 
+                      className="px-3.5 py-2 bg-escola-azul hover:bg-blue-600 text-white text-xs font-black uppercase rounded-xl transition-all shadow-xs flex items-center gap-1.5 hover:scale-105 active:scale-95 shrink-0"
+                      title="Escolher e planejar as habilidades que serão trabalhadas nesta unidade"
                     >
-                      <Search className="w-3.5 h-3.5 text-escola-azul group-hover:scale-110 transition-transform" />
-                      <span>BUSCA RÁPIDA</span>
-                      <kbd className="px-1.5 py-0.5 text-[9px] font-mono font-bold text-slate-500 bg-slate-100 rounded border border-slate-200">
-                        Ctrl+K
-                      </kbd>
+                      <SlidersHorizontal className="w-3.5 h-3.5" />
+                      <span>Organizar Bimestre ({plannedSkillIdsForUnit.length})</span>
                     </button>
+
                     <button 
                       onClick={() => setSkillsModalOpen(true)} 
-                      className="text-[10px] font-black text-escola-azul hover:text-blue-700 bg-sky-50 hover:bg-sky-100 px-3.5 py-2 rounded-xl border border-sky-200/80 transition-all flex items-center gap-1.5 shadow-xs"
+                      className="text-[10px] font-bold text-slate-300 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-2 rounded-xl transition-all flex items-center gap-1 shrink-0"
+                      title="Cadastrar novas habilidades na BNCC"
                     >
-                      <Sparkles className="w-3.5 h-3.5 text-sky-500" /> GERENCIAR HABILIDADES
+                      <Sparkles className="w-3 h-3 text-sky-400" /> BNCC
                     </button>
                   </div>
                 </div>
 
-                {subjectSubFilters[activeTab] && subjectSubFilters[activeTab].length > 0 && (
+                {currentSubFilters.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-6">
-                    {subjectSubFilters[activeTab].map(filter => {
+                    {currentSubFilters.map(filter => {
                       const isSelected = activeSubFilter === filter.id;
                       return (
                         <motion.button
@@ -851,17 +997,32 @@ export function MainApp({ currentGrade, currentLetter, appData, globalSkills, on
 
                 {currentSkills.length === 0 ? (
                   <div className="p-12 text-center bg-slate-50/80 rounded-3xl border border-dashed border-slate-200 flex flex-col items-center justify-center">
-                    <span className="text-4xl mb-3">🎨</span>
-                    <h4 className="text-sm font-black uppercase text-slate-700">Nenhuma habilidade encontrada</h4>
-                    <p className="text-xs text-slate-400 mt-1 max-w-sm">
-                      Não há habilidades cadastradas para este filtro ou matéria. Clique abaixo para cadastrar ou gerenciar.
+                    <span className="text-4xl mb-3">🎯</span>
+                    <h4 className="text-sm font-black uppercase text-slate-800">
+                      Nenhuma habilidade {unitScopeFilter === 'unit_only' ? `planejada para a ${selectedUnit}` : 'encontrada'}
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-1 max-w-md">
+                      {unitScopeFilter === 'unit_only' 
+                        ? `Você pode usar o organizador para escolher as habilidades desta unidade ou alternar para exibir todas as habilidades cadastradas.` 
+                        : `Não há habilidades cadastradas para este filtro ou matéria.`}
                     </p>
-                    <button
-                      onClick={() => setSkillsModalOpen(true)}
-                      className="mt-4 px-4 py-2 bg-escola-azul text-white text-xs font-black uppercase rounded-xl hover:bg-blue-600 transition-all shadow-sm"
-                    >
-                      Adicionar Habilidades
-                    </button>
+                    <div className="flex items-center gap-2 mt-4 flex-wrap justify-center">
+                      <button
+                        onClick={() => setUnitOrganizerOpen(true)}
+                        className="px-4 py-2 bg-escola-azul text-white text-xs font-black uppercase rounded-xl hover:bg-blue-600 transition-all shadow-sm flex items-center gap-1.5"
+                      >
+                        <SlidersHorizontal className="w-3.5 h-3.5" />
+                        Organizar Habilidades da Unidade
+                      </button>
+                      {unitScopeFilter === 'unit_only' && (
+                        <button
+                          onClick={() => setUnitScopeFilter('all')}
+                          className="px-4 py-2 bg-white border border-slate-300 text-slate-700 text-xs font-black uppercase rounded-xl hover:bg-slate-50 transition-all shadow-2xs"
+                        >
+                          Ver Todas do Ano
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
@@ -925,6 +1086,23 @@ export function MainApp({ currentGrade, currentLetter, appData, globalSkills, on
                                 <span className={`text-[11px] font-black uppercase tracking-wider font-mono ${isSet ? 'text-emerald-700' : 'text-slate-700'}`}>
                                   {s.id}
                                 </span>
+                                {plannedSkillIdsForUnit.includes(s.id) ? (
+                                  <button
+                                    onClick={(e) => handleToggleSkillPlannedInUnit(s.id, e)}
+                                    className="inline-flex items-center gap-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border border-emerald-300 text-[8px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold transition-colors"
+                                    title="Habilidade planejada nesta unidade. Clique para remover do planejamento."
+                                  >
+                                    <Target className="w-2.5 h-2.5" /> {selectedUnit}
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={(e) => handleToggleSkillPlannedInUnit(s.id, e)}
+                                    className="inline-flex items-center gap-1 bg-slate-100 hover:bg-emerald-50 text-slate-400 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 text-[8px] px-2 py-0.5 rounded-full uppercase tracking-wider font-semibold transition-colors"
+                                    title="Clique para incluir no planejamento desta unidade."
+                                  >
+                                    <Pin className="w-2.5 h-2.5" /> + {selectedUnit}
+                                  </button>
+                                )}
                                 {usedInOtherUnit && (
                                   <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200/80 text-[8px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
                                     <span>📌</span> {usedInOtherUnit}
@@ -1085,15 +1263,17 @@ export function MainApp({ currentGrade, currentLetter, appData, globalSkills, on
         onInsertPhrase={handleInsertPhrase}
       />
 
-      <QuickSkillSearchModal
-        isOpen={isQuickSearchOpen}
-        onClose={() => setIsQuickSearchOpen(false)}
-        globalSkills={globalSkills}
+      <UnitSkillsOrganizerModal
+        isOpen={unitOrganizerOpen}
+        onClose={() => setUnitOrganizerOpen(false)}
         currentGrade={currentGrade}
-        selectedStudent={selectedStudent}
-        selectedUnit={selectedUnit}
-        currentStudentData={classData[selectedStudent]?.[selectedUnit]}
-        onToggleSkill={toggleSkill}
+        currentLetter={currentLetter}
+        initialUnit={selectedUnit}
+        classData={classData}
+        appData={appData}
+        globalSkills={globalSkills}
+        onUpdateAppData={onUpdateAppData}
+        onSelectUnit={setSelectedUnit}
       />
     </div>
   );
