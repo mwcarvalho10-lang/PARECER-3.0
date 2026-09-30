@@ -33,6 +33,9 @@ export interface UnitData {
 export interface StudentData {
   gender?: 'M' | 'F';
   active?: boolean;
+  statusReason?: 'ativo' | 'transferido' | 'abandono' | 'remanejado';
+  transferDate?: string;
+  transferNotes?: string;
   isAee?: boolean; // Estudante da Educação Especial (AEE / PEI)
   aeeType?: string; // e.g. TEA, TDAH, Deficiência Intelectual, Baixa Visão, Altas Habilidades, etc.
   aeeNotes?: string; // Orientações de mediação pedagógica e adaptação curricular

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Home, Download, Edit3, Trash2, CheckCircle2, Menu, Clock, Bell, Book, CheckSquare, Square, Layers, Sparkles, Check, BarChart3, Search, BookOpen, HeartHandshake, SlidersHorizontal, Target, Pin } from 'lucide-react';
+import { Home, Download, Edit3, Trash2, CheckCircle2, Menu, Clock, Bell, Book, CheckSquare, Square, Layers, Sparkles, Check, BarChart3, Search, BookOpen, HeartHandshake, SlidersHorizontal, Target, Pin, Heart, ArrowUpDown, FileSpreadsheet, Award } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppData, Skill, ClassData } from '@/lib/types';
 import { units, subjects } from '@/lib/constants';
@@ -10,6 +10,9 @@ import { ClassDiagnosis } from './ClassDiagnosis';
 import { SchoolLogo } from './SchoolLogo';
 import { PhraseBankModal } from './PhraseBankModal';
 import { UnitSkillsOrganizerModal } from './UnitSkillsOrganizerModal';
+import { BatchStudentImportModal } from './BatchStudentImportModal';
+import { FamilyReportModal } from './FamilyReportModal';
+import { ClassCouncilModal } from './ClassCouncilModal';
 import { getPlannedSkillsForUnit, getAllUnitsForSkill, savePlannedSkillsInAppData } from '@/lib/curriculumUtils';
 import { Document, Packer, Paragraph, HeadingLevel, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
@@ -47,9 +50,13 @@ export function MainApp({
   const [activeSubFilter, setActiveSubFilter] = useState<string>("all");
   const [searchStudent, setSearchStudent] = useState("");
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'aee'>('active');
+  const [studentSortOrder, setStudentSortOrder] = useState<'alpha' | 'pending_report' | 'attention'>('alpha');
 
   const [studentModalOpen, setStudentModalOpen] = useState(false);
   const [studentToEdit, setStudentToEdit] = useState("");
+  const [batchImportOpen, setBatchImportOpen] = useState(false);
+  const [familyReportOpen, setFamilyReportOpen] = useState(false);
+  const [classCouncilOpen, setClassCouncilOpen] = useState(false);
   const [skillsModalOpen, setSkillsModalOpen] = useState(false);
   const [unitOrganizerOpen, setUnitOrganizerOpen] = useState(false);
   const [unitScopeFilter, setUnitScopeFilter] = useState<'unit_only' | 'all'>('unit_only');
@@ -88,7 +95,9 @@ export function MainApp({
     gender: 'M' | 'F' | '', 
     isAee: boolean, 
     aeeType: string, 
-    aeeNotes: string
+    aeeNotes: string,
+    statusReason: 'ativo' | 'transferido' | 'abandono' | 'remanejado' = 'ativo',
+    transferNotes: string = ''
   ) => {
     if (!name) return;
     if (classData.students.includes(name)) {
@@ -96,7 +105,15 @@ export function MainApp({
       return;
     }
     const newStudents = [...classData.students, name].sort();
-    const newStudentData: any = { active, gender, isAee, aeeType, aeeNotes };
+    const newStudentData: any = { 
+      active: statusReason === 'ativo' ? active : false, 
+      statusReason,
+      transferNotes,
+      gender, 
+      isAee, 
+      aeeType, 
+      aeeNotes 
+    };
     units.forEach(u => newStudentData[u] = { skills: [], observation: "" });
     
     onUpdateAppData({
@@ -117,7 +134,9 @@ export function MainApp({
     gender: 'M' | 'F' | '',
     isAee: boolean,
     aeeType: string,
-    aeeNotes: string
+    aeeNotes: string,
+    statusReason: 'ativo' | 'transferido' | 'abandono' | 'remanejado' = 'ativo',
+    transferNotes: string = ''
   ) => {
     if (!newName) {
       setStudentModalOpen(false);
@@ -133,11 +152,13 @@ export function MainApp({
     const newStudents = classData.students.map(s => s === studentToEdit ? newName : s).sort();
     const studentData = { 
       ...classData[studentToEdit], 
-      active, 
-      gender,
-      isAee,
-      aeeType,
-      aeeNotes
+      active: statusReason === 'ativo' ? active : false, 
+      statusReason,
+      transferNotes,
+      gender, 
+      isAee, 
+      aeeType, 
+      aeeNotes 
     };
     
     const newClassData: ClassData = { ...classData, students: newStudents, [newName]: studentData };
@@ -154,6 +175,35 @@ export function MainApp({
       setSelectedStudent(newName);
     }
     setStudentModalOpen(false);
+  };
+
+  const handleBatchImportStudents = (newStudentsList: string[]) => {
+    if (newStudentsList.length === 0) return;
+    const newStudents = [...classData.students, ...newStudentsList].sort();
+    const updatedClassData: ClassData = { ...classData, students: newStudents };
+    
+    newStudentsList.forEach(name => {
+      const studentData: any = { 
+        active: true, 
+        statusReason: 'ativo', 
+        transferNotes: '', 
+        gender: '', 
+        isAee: false, 
+        aeeType: '', 
+        aeeNotes: '' 
+      };
+      units.forEach(u => studentData[u] = { skills: [], observation: "" });
+      updatedClassData[name] = studentData;
+    });
+
+    onUpdateAppData({
+      ...appData,
+      [classKey]: updatedClassData
+    });
+
+    if (!selectedStudent && newStudentsList.length > 0) {
+      setSelectedStudent(newStudentsList[0]);
+    }
   };
 
   const handleInsertPhrase = (phrase: string) => {
@@ -317,16 +367,40 @@ export function MainApp({
     });
   };
 
-  const filteredStudents = classData.students.filter(s => {
-    const matchesSearch = s.toLowerCase().includes(searchStudent.toLowerCase());
-    const isActive = classData[s]?.active !== false; // default to true if undefined
-    const isAee = Boolean(classData[s]?.isAee);
-    
-    if (statusFilter === 'active') return matchesSearch && isActive;
-    if (statusFilter === 'inactive') return matchesSearch && !isActive;
-    if (statusFilter === 'aee') return matchesSearch && isAee;
-    return matchesSearch;
-  });
+  const filteredStudents = useMemo(() => {
+    const list = classData.students.filter(s => {
+      const matchesSearch = s.toLowerCase().includes(searchStudent.toLowerCase());
+      const isActive = classData[s]?.active !== false; // default to true if undefined
+      const isAee = Boolean(classData[s]?.isAee);
+      
+      if (statusFilter === 'active') return matchesSearch && isActive;
+      if (statusFilter === 'inactive') return matchesSearch && !isActive;
+      if (statusFilter === 'aee') return matchesSearch && isAee;
+      return matchesSearch;
+    });
+
+    return list.sort((a, b) => {
+      if (studentSortOrder === 'alpha') {
+        return a.localeCompare(b);
+      }
+
+      if (studentSortOrder === 'pending_report') {
+        const obsA = Boolean(classData[a]?.[selectedUnit]?.observation?.trim() && classData[a][selectedUnit].observation.length > 10);
+        const obsB = Boolean(classData[b]?.[selectedUnit]?.observation?.trim() && classData[b][selectedUnit].observation.length > 10);
+        if (obsA !== obsB) return obsA ? 1 : -1; // Pending reports first
+        return a.localeCompare(b);
+      }
+
+      if (studentSortOrder === 'attention') {
+        const countA = classData[a]?.[selectedUnit]?.skills?.length || 0;
+        const countB = classData[b]?.[selectedUnit]?.skills?.length || 0;
+        if (countA !== countB) return countA - countB; // Lowest skills first
+        return a.localeCompare(b);
+      }
+
+      return a.localeCompare(b);
+    });
+  }, [classData, searchStudent, statusFilter, studentSortOrder, selectedUnit]);
 
   const getStatsRaw = () => {
     const activeStudents = classData.students.filter(s => classData[s]?.active !== false);
@@ -655,6 +729,14 @@ export function MainApp({
         </div>
         <div className="flex items-center gap-3">
           <button 
+            onClick={() => setClassCouncilOpen(true)} 
+            className="hidden lg:flex items-center gap-1.5 px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs hover:scale-105 active:scale-95"
+            title="Ficha Oficial do Conselho de Classe (Barema Imprimível)"
+          >
+            <Award className="w-3.5 h-3.5" />
+            <span>Ata do Conselho</span>
+          </button>
+          <button 
             onClick={() => setIsPhraseBankOpen(true)} 
             className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50/90 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/90 rounded-xl text-[10px] font-bold uppercase transition-all shadow-2xs hover:scale-105 active:scale-95" 
             title="Banco de Frases Pedagógicas & Conectivos (Inserir no Parecer)"
@@ -757,7 +839,7 @@ export function MainApp({
                 placeholder="Buscar estudante..." 
                 className="w-full bg-stone-50 border border-stone-200/70 rounded-xl px-3.5 py-2.5 text-xs font-medium text-stone-800 outline-none focus:bg-white focus:border-stone-400 placeholder:text-stone-400 mb-3 transition-colors"
               />
-              <div className="flex gap-1 bg-stone-100/90 p-1 rounded-xl border border-stone-200/60">
+              <div className="flex gap-1 bg-stone-100/90 p-1 rounded-xl border border-stone-200/60 mb-2.5">
                 <button 
                   onClick={() => setStatusFilter('active')}
                   className={`flex-1 py-1 text-[9px] font-bold uppercase rounded-lg transition-all ${statusFilter === 'active' ? 'bg-white text-stone-800 shadow-2xs font-black' : 'text-stone-500 hover:text-stone-800'}`}
@@ -783,8 +865,44 @@ export function MainApp({
                   Todos
                 </button>
               </div>
+
+              {/* Ordenação Inteligente da Lista */}
+              <div className="flex items-center justify-between text-[10px] text-stone-500 px-1">
+                <span className="font-bold flex items-center gap-1 text-[9px] uppercase tracking-wider text-stone-400">
+                  <ArrowUpDown className="w-3 h-3 text-stone-400" /> Ordem:
+                </span>
+                <div className="flex items-center gap-1 bg-stone-100 p-0.5 rounded-lg border border-stone-200/70">
+                  <button
+                    onClick={() => setStudentSortOrder('alpha')}
+                    className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition-all ${
+                      studentSortOrder === 'alpha' ? 'bg-white text-stone-900 shadow-2xs font-black' : 'text-stone-500 hover:text-stone-800'
+                    }`}
+                    title="Ordem Alfabética"
+                  >
+                    A-Z
+                  </button>
+                  <button
+                    onClick={() => setStudentSortOrder('pending_report')}
+                    className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition-all ${
+                      studentSortOrder === 'pending_report' ? 'bg-amber-500 text-white shadow-2xs font-black' : 'text-stone-500 hover:text-stone-800'
+                    }`}
+                    title="Alunos com parecer pendente no topo"
+                  >
+                    Pendente
+                  </button>
+                  <button
+                    onClick={() => setStudentSortOrder('attention')}
+                    className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition-all ${
+                      studentSortOrder === 'attention' ? 'bg-rose-600 text-white shadow-2xs font-black' : 'text-stone-500 hover:text-stone-800'
+                    }`}
+                    title="Alunos com menor domínio no topo"
+                  >
+                    Atenção
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="flex-1 overflow-y-auto px-4 space-y-1 pb-6 mt-2">
+            <div className="flex-1 overflow-y-auto px-4 space-y-1 pb-6 mt-1">
               {filteredStudents.map(s => {
                 const numSkills = classData[s]?.[selectedUnit]?.skills?.length || 0;
                 const obsLength = classData[s]?.[selectedUnit]?.observation?.trim()?.length || 0;
@@ -798,6 +916,7 @@ export function MainApp({
                 }
                 
                 const isActive = classData[s]?.active !== false;
+                const statusReason = classData[s]?.statusReason || (isActive ? 'ativo' : 'transferido');
                 const isAee = Boolean(classData[s]?.isAee);
                 const isSelectedInBulk = selectedStudentsBulk.includes(s);
 
@@ -831,13 +950,32 @@ export function MainApp({
                       )
                     )}
                     <span className={`truncate uppercase block ${!isActive ? 'line-through opacity-60' : ''}`}>{s}</span>
-                    {isAee && (
-                      <span className={`ml-auto shrink-0 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
-                        selectedStudent === s ? 'bg-white/20 text-white' : 'bg-purple-100 text-purple-700'
-                      }`}>
-                        AEE
-                      </span>
-                    )}
+                    
+                    {/* Status badges */}
+                    <div className="ml-auto shrink-0 flex items-center gap-1">
+                      {statusReason === 'transferido' && (
+                        <span className="px-1 py-0.2 rounded text-[8px] font-bold uppercase bg-amber-100 text-amber-800 border border-amber-200" title={`Transferido: ${classData[s]?.transferNotes || ''}`}>
+                          TR
+                        </span>
+                      )}
+                      {statusReason === 'remanejado' && (
+                        <span className="px-1 py-0.2 rounded text-[8px] font-bold uppercase bg-sky-100 text-sky-800 border border-sky-200" title={`Remanejado: ${classData[s]?.transferNotes || ''}`}>
+                          RM
+                        </span>
+                      )}
+                      {statusReason === 'abandono' && (
+                        <span className="px-1 py-0.2 rounded text-[8px] font-bold uppercase bg-rose-100 text-rose-800 border border-rose-200" title={`Abandono: ${classData[s]?.transferNotes || ''}`}>
+                          AB
+                        </span>
+                      )}
+                      {isAee && (
+                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                          selectedStudent === s ? 'bg-white/20 text-white' : 'bg-purple-100 text-purple-700'
+                        }`}>
+                          AEE
+                        </span>
+                      )}
+                    </div>
                   </button>
                   <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden group-hover:flex gap-1 z-20">
                     <button onClick={(e) => { e.stopPropagation(); setStudentToEdit(s); setStudentModalOpen(true); }} className="w-7 h-7 bg-white/90 rounded-lg flex items-center justify-center text-slate-500 hover:text-escola-azul shadow-sm border border-slate-200 hover:border-slate-300 transition-colors">
@@ -850,9 +988,20 @@ export function MainApp({
                 </div>
               )})}
             </div>
-            <div className="p-4 border-t border-slate-100">
-              <button onClick={() => { setStudentToEdit(""); setStudentModalOpen(true); }} className="w-full py-3 rounded-xl border border-dashed border-slate-300 text-slate-500 text-[10px] font-black uppercase hover:text-escola-azul hover:border-escola-azul/40 hover:bg-slate-50 transition-colors">
+            <div className="p-3 border-t border-stone-100 grid grid-cols-2 gap-2">
+              <button 
+                onClick={() => { setStudentToEdit(""); setStudentModalOpen(true); }} 
+                className="py-2.5 rounded-xl border border-dashed border-stone-300 text-stone-600 text-[10px] font-bold uppercase hover:text-escola-azul hover:border-escola-azul/40 hover:bg-stone-50 transition-colors flex items-center justify-center gap-1"
+              >
                 + Estudante
+              </button>
+              <button 
+                onClick={() => setBatchImportOpen(true)} 
+                className="py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/90 text-[10px] font-bold uppercase transition-colors flex items-center justify-center gap-1 shadow-2xs"
+                title="Colar lista de nomes do Excel/Planilha"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                <span>+ Planilha</span>
               </button>
             </div>
           </div>
@@ -1167,6 +1316,13 @@ export function MainApp({
               )}
             </div>
             <div className="flex gap-1.5 items-center">
+              <button 
+                onClick={(e) => { e.stopPropagation(); setFamilyReportOpen(true); }} 
+                className="text-[9px] bg-emerald-600 hover:bg-emerald-700 px-2 py-1.5 rounded-lg text-white font-bold uppercase flex items-center gap-1 transition-colors" 
+                title="Gerar Ficha Resumida para a Família (A4)"
+              >
+                <Heart className="w-3 h-3 text-emerald-200" /> Família
+              </button>
               <button onClick={(e) => { e.stopPropagation(); saveTemplate(); }} className="text-[9px] bg-stone-800 px-2 py-1.5 rounded-lg hover:bg-stone-700 text-stone-200 hover:text-white font-bold uppercase flex items-center gap-1 transition-colors" title="Salvar como Modelo"><Layers className="w-3 h-3" /> Salvar</button>
               {templates.length > 0 && (
                 <select onClick={(e) => e.stopPropagation()} onChange={(e) => { if(e.target.value) loadTemplate(e.target.value); e.target.value = ''; }} className="text-[9px] px-2 py-1.5 rounded-lg font-bold uppercase bg-stone-800 hover:bg-stone-700 text-stone-200 hover:text-white outline-none cursor-pointer max-w-[80px]">
@@ -1241,12 +1397,42 @@ export function MainApp({
         isOpen={studentModalOpen} 
         initialName={studentToEdit} 
         initialActive={studentToEdit ? classData[studentToEdit]?.active !== false : true}
+        initialStatusReason={studentToEdit ? classData[studentToEdit]?.statusReason || (classData[studentToEdit]?.active !== false ? 'ativo' : 'transferido') : 'ativo'}
+        initialTransferNotes={studentToEdit ? classData[studentToEdit]?.transferNotes || '' : ''}
         initialGender={studentToEdit ? classData[studentToEdit]?.gender : ''}
         initialIsAee={studentToEdit ? Boolean(classData[studentToEdit]?.isAee) : false}
         initialAeeType={studentToEdit ? classData[studentToEdit]?.aeeType || '' : ''}
         initialAeeNotes={studentToEdit ? classData[studentToEdit]?.aeeNotes || '' : ''}
         onClose={() => setStudentModalOpen(false)} 
         onConfirm={studentToEdit ? handleEditStudent : handleAddStudent} 
+      />
+
+      <BatchStudentImportModal
+        isOpen={batchImportOpen}
+        onClose={() => setBatchImportOpen(false)}
+        existingStudents={classData.students || []}
+        onImport={handleBatchImportStudents}
+      />
+
+      <FamilyReportModal
+        isOpen={familyReportOpen}
+        onClose={() => setFamilyReportOpen(false)}
+        studentName={selectedStudent}
+        currentGrade={currentGrade}
+        currentLetter={currentLetter}
+        selectedUnit={selectedUnit}
+        classData={classData}
+        globalSkills={globalSkills}
+      />
+
+      <ClassCouncilModal
+        isOpen={classCouncilOpen}
+        onClose={() => setClassCouncilOpen(false)}
+        currentGrade={currentGrade}
+        currentLetter={currentLetter}
+        selectedUnit={selectedUnit}
+        classData={classData}
+        globalSkills={globalSkills}
       />
       
       <SkillsModal 

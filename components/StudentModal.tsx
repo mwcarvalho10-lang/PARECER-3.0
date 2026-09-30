@@ -7,6 +7,8 @@ interface StudentModalProps {
   isOpen: boolean;
   initialName: string;
   initialActive?: boolean;
+  initialStatusReason?: 'ativo' | 'transferido' | 'abandono' | 'remanejado';
+  initialTransferNotes?: string;
   initialGender?: 'M' | 'F' | '';
   initialIsAee?: boolean;
   initialAeeType?: string;
@@ -18,7 +20,9 @@ interface StudentModalProps {
     gender: 'M' | 'F' | '', 
     isAee: boolean, 
     aeeType: string, 
-    aeeNotes: string
+    aeeNotes: string,
+    statusReason?: 'ativo' | 'transferido' | 'abandono' | 'remanejado',
+    transferNotes?: string
   ) => void;
 }
 
@@ -37,6 +41,8 @@ const AEE_TYPES = [
 function StudentModalForm({
   initialName,
   initialActive = true,
+  initialStatusReason = 'ativo',
+  initialTransferNotes = '',
   initialGender = '',
   initialIsAee = false,
   initialAeeType = '',
@@ -46,6 +52,8 @@ function StudentModalForm({
 }: Omit<StudentModalProps, 'isOpen'>) {
   const [name, setName] = useState(initialName);
   const [active, setActive] = useState(initialActive);
+  const [statusReason, setStatusReason] = useState<'ativo' | 'transferido' | 'abandono' | 'remanejado'>(initialStatusReason || (initialActive ? 'ativo' : 'transferido'));
+  const [transferNotes, setTransferNotes] = useState(initialTransferNotes || '');
   const [gender, setGender] = useState<'M' | 'F' | ''>(initialGender);
   const [isAee, setIsAee] = useState(Boolean(initialIsAee));
   const [aeeType, setAeeType] = useState(initialAeeType || '');
@@ -54,7 +62,17 @@ function StudentModalForm({
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!name.trim()) return;
-    onConfirm(name.trim(), active, gender, isAee, aeeType, aeeNotes);
+    const finalActive = active && statusReason === 'ativo';
+    onConfirm(
+      name.trim(), 
+      finalActive, 
+      gender, 
+      isAee, 
+      aeeType, 
+      aeeNotes,
+      finalActive ? 'ativo' : statusReason,
+      transferNotes
+    );
   };
 
   return (
@@ -106,21 +124,91 @@ function StudentModalForm({
             </div>
           </div>
 
-          {/* Active Status */}
-          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <div>
-              <span className="text-[11px] font-black uppercase text-slate-700 block">Status da Matrícula</span>
-              <span className="text-[10px] text-slate-400 font-medium">
-                {active ? 'Aluno frequente na turma' : 'Matrícula inativa / transferido'}
-              </span>
+          {/* Active & Status Reason Section */}
+          <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200/90 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-bold uppercase text-stone-800 block">Situação da Matrícula</span>
+                <span className="text-[10px] text-stone-500 font-medium">
+                  {statusReason === 'ativo' ? 'Frequente na turma' : `Inativo: ${statusReason.toUpperCase()}`}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => { setActive(true); setStatusReason('ativo'); }}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${
+                    active && statusReason === 'ativo'
+                      ? 'bg-emerald-600 text-white shadow-2xs font-black'
+                      : 'bg-stone-200/70 text-stone-600 hover:bg-stone-300'
+                  }`}
+                >
+                  Frequente
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setActive(false); if (statusReason === 'ativo') setStatusReason('transferido'); }}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${
+                    !active || statusReason !== 'ativo'
+                      ? 'bg-amber-600 text-white shadow-2xs font-black'
+                      : 'bg-stone-200/70 text-stone-600 hover:bg-stone-300'
+                  }`}
+                >
+                  Inativo
+                </button>
+              </div>
             </div>
-            <button 
-              type="button"
-              onClick={() => setActive(!active)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${active ? 'bg-emerald-500' : 'bg-slate-300'}`}
-            >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${active ? 'translate-x-6' : 'translate-x-1'}`} />
-            </button>
+
+            {(!active || statusReason !== 'ativo') && (
+              <div className="pt-2 border-t border-stone-200/80 space-y-2 animate-in fade-in duration-150">
+                <label className="block text-[9px] font-bold uppercase text-stone-500">
+                  Motivo da Inativação:
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => { setActive(false); setStatusReason('transferido'); }}
+                    className={`py-2 px-1 text-center rounded-xl text-[10px] font-bold uppercase transition-all border ${
+                      statusReason === 'transferido'
+                        ? 'bg-amber-500 text-white border-amber-600 shadow-2xs'
+                        : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-100'
+                    }`}
+                  >
+                    Transferido
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setActive(false); setStatusReason('remanejado'); }}
+                    className={`py-2 px-1 text-center rounded-xl text-[10px] font-bold uppercase transition-all border ${
+                      statusReason === 'remanejado'
+                        ? 'bg-sky-600 text-white border-sky-700 shadow-2xs'
+                        : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-100'
+                    }`}
+                  >
+                    Remanejado
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setActive(false); setStatusReason('abandono'); }}
+                    className={`py-2 px-1 text-center rounded-xl text-[10px] font-bold uppercase transition-all border ${
+                      statusReason === 'abandono'
+                        ? 'bg-rose-600 text-white border-rose-700 shadow-2xs'
+                        : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-100'
+                    }`}
+                  >
+                    Abandono
+                  </button>
+                </div>
+
+                <input
+                  type="text"
+                  value={transferNotes}
+                  onChange={(e) => setTransferNotes(e.target.value)}
+                  placeholder="Observação (ex: Transferido para Escola X em 15/04)"
+                  className="w-full p-2 bg-white rounded-xl text-xs font-medium text-stone-700 border border-stone-200 outline-none focus:border-stone-400 placeholder:text-stone-400"
+                />
+              </div>
+            )}
           </div>
 
           {/* AEE / PEI Education Section */}
