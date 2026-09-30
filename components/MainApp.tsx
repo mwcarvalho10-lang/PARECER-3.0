@@ -617,46 +617,46 @@ export function MainApp({
 
   return (
     <div className="h-full flex flex-col">
-      <header className="h-16 bg-white flex items-center justify-between px-6 shrink-0 border-b border-slate-200 shadow-sm z-50">
+      <header className="h-16 bg-[#fdfbf7]/95 backdrop-blur-md flex items-center justify-between px-6 shrink-0 border-b border-stone-200/80 shadow-2xs z-50">
         <div className="flex items-center gap-3">
-          <button onClick={onGoBack} className="w-9 h-9 hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-400" title="Voltar para Turmas">
+          <button onClick={onGoBack} className="w-9 h-9 hover:bg-stone-100 rounded-full flex items-center justify-center text-stone-400 hover:text-stone-700 transition-colors" title="Voltar para Turmas">
             <Home className="w-4 h-4" />
           </button>
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="w-9 h-9 hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-400" title="Menu Lateral">
+          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="w-9 h-9 hover:bg-stone-100 rounded-full flex items-center justify-center text-stone-400 hover:text-stone-700 transition-colors" title="Menu Lateral">
             <Menu className="w-4 h-4" />
           </button>
-          <div className="flex items-center gap-3 border-l border-slate-200 pl-3">
+          <div className="flex items-center gap-3 border-l border-stone-200 pl-3">
             <SchoolLogo size="sm" showText={false} />
             <div>
-              <h1 className="text-sm font-black uppercase font-serif tracking-tight text-slate-900 leading-tight flex items-center gap-1.5">
+              <h1 className="text-sm sm:text-base font-bold font-serif tracking-tight text-stone-900 leading-tight flex items-center gap-2">
                 <span>{currentGrade}º ANO &quot;{currentLetter}&quot;</span>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                <span className={`text-[10px] font-sans font-bold px-2 py-0.5 rounded-md ${
                   isViewingArchive ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-100 text-emerald-800'
                 }`}>
                   {isViewingArchive ? `Arquivo ${viewingYear}` : viewingYear}
                 </span>
               </h1>
-              <p className="text-[9px] text-escola-azul font-bold uppercase tracking-wider">
-                E. M. Raymundo Lemos Santana
+              <p className="text-[10px] font-serif italic text-stone-500 font-medium leading-none mt-0.5">
+                Escola Municipal Raymundo Lemos Santana
               </p>
             </div>
           </div>
         </div>
-        <div className="hidden md:flex bg-slate-100 p-1 rounded-2xl gap-1">
+        <div className="hidden md:flex bg-stone-100/90 p-1 rounded-2xl gap-1 border border-stone-200/60 shadow-inner">
           {units.map(u => (
             <button 
               key={u} 
               onClick={() => setSelectedUnit(u)} 
-              className={`px-4 py-2 text-[9px] font-black uppercase rounded-xl transition-all ${selectedUnit === u ? 'bg-white text-escola-azul shadow-sm -translate-y-[1px]' : 'text-slate-400'}`}
+              className={`px-4 py-2 text-[10px] font-bold uppercase rounded-xl transition-all ${selectedUnit === u ? 'bg-white text-escola-azul shadow-sm -translate-y-[1px]' : 'text-stone-500 hover:text-stone-800'}`}
             >
               {u}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <button 
             onClick={() => setIsPhraseBankOpen(true)} 
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/80 rounded-xl text-[10px] font-black uppercase transition-all shadow-xs hover:scale-105 active:scale-95" 
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50/90 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/90 rounded-xl text-[10px] font-bold uppercase transition-all shadow-2xs hover:scale-105 active:scale-95" 
             title="Banco de Frases Pedagógicas & Conectivos (Inserir no Parecer)"
           >
             <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
@@ -665,7 +665,7 @@ export function MainApp({
           <div className="relative">
             <button 
               onClick={() => setIsProgressOpen(!isProgressOpen)} 
-              className="w-10 h-10 hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-400 relative transition-all"
+              className="w-10 h-10 hover:bg-stone-100 rounded-full flex items-center justify-center text-stone-400 hover:text-stone-700 relative transition-all"
             >
               <Bell className="w-5 h-5" />
               {(() => {
@@ -683,8 +683,8 @@ export function MainApp({
               })()}
             </button>
             {isProgressOpen && (
-              <div className="absolute top-12 right-0 w-64 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] border border-slate-200 p-4 z-50 animate-in fade-in zoom-in-95">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Progresso ({selectedUnit})</h3>
+              <div className="absolute top-12 right-0 w-64 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] border border-stone-200 p-4 z-50 animate-in fade-in zoom-in-95">
+                <h3 className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-3">Progresso ({selectedUnit})</h3>
                 {(() => {
                   const stats = getStatsRaw();
                   const data = [
@@ -712,17 +712,17 @@ export function MainApp({
                           </PieChart>
                         </ResponsiveContainer>
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-[10px] font-black text-slate-700">{stats.percent}%</span>
+                          <span className="text-[10px] font-black text-stone-700">{stats.percent}%</span>
                         </div>
                       </div>
                       <div className="flex flex-col flex-1">
                         <div className="flex justify-between items-center text-[10px] mb-1">
-                          <span className="text-slate-500 font-bold uppercase">Concluídos</span>
+                          <span className="text-stone-500 font-bold uppercase">Concluídos</span>
                           <span className="font-black text-escola-verde">{stats.done}</span>
                         </div>
                         <div className="flex justify-between items-center text-[10px]">
-                          <span className="text-slate-500 font-bold uppercase">Pendentes</span>
-                          <span className="font-black text-slate-400">{stats.pending}</span>
+                          <span className="text-stone-500 font-bold uppercase">Pendentes</span>
+                          <span className="font-black text-stone-400">{stats.pending}</span>
                         </div>
                       </div>
                     </div>
@@ -731,21 +731,21 @@ export function MainApp({
               </div>
             )}
           </div>
-          <button onClick={exportBatchDocx} className="bg-escola-azul text-white px-6 py-2.5 rounded-full text-[10px] font-black uppercase shadow-lg flex items-center gap-2 transition-transform hover:scale-105 active:scale-95">
-            <Download className="w-4 h-4" /> Exportar Turma
+          <button onClick={exportBatchDocx} className="bg-escola-azul hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-[10px] font-bold uppercase shadow-sm flex items-center gap-2 transition-all hover:scale-105 active:scale-95">
+            <Download className="w-3.5 h-3.5" /> Exportar Turma
           </button>
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden escolar-bg p-4 gap-4">
-        <aside className={`bg-white/95 backdrop-blur-md rounded-3xl border border-slate-200/90 flex flex-col shrink-0 transition-all duration-300 shadow-[0_8px_30px_rgb(0,0,0,0.05)] ${isSidebarOpen ? 'w-72' : 'w-0 overflow-hidden border-none opacity-0'}`}>
+        <aside className={`bg-white/95 backdrop-blur-md rounded-3xl border border-stone-200/80 flex flex-col shrink-0 transition-all duration-300 shadow-[0_8px_30px_rgba(40,30,20,0.04)] ${isSidebarOpen ? 'w-72' : 'w-0 overflow-hidden border-none opacity-0'}`}>
           <div className="w-72 flex flex-col h-full">
             <div className="p-6 pb-2">
               <div className="flex justify-between items-center mb-3">
-                <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estudantes</h2>
+                <h2 className="text-[10px] font-bold font-serif uppercase tracking-widest text-stone-500">Estudantes</h2>
                 <button 
                   onClick={() => setIsBulkMode(!isBulkMode)}
-                  className={`px-2 py-1 rounded text-[9px] font-bold uppercase transition-colors flex items-center gap-1 ${isBulkMode ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                  className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase transition-colors flex items-center gap-1 ${isBulkMode ? 'bg-amber-100 text-amber-800' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'}`}
                 >
                   {isBulkMode ? <CheckSquare className="w-3 h-3" /> : <Layers className="w-3 h-3" />} Lote
                 </button>
@@ -754,31 +754,31 @@ export function MainApp({
                 type="text" 
                 value={searchStudent}
                 onChange={e => setSearchStudent(e.target.value)}
-                placeholder="BUSCAR..." 
-                className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-xs font-bold uppercase outline-none mb-3"
+                placeholder="Buscar estudante..." 
+                className="w-full bg-stone-50 border border-stone-200/70 rounded-xl px-3.5 py-2.5 text-xs font-medium text-stone-800 outline-none focus:bg-white focus:border-stone-400 placeholder:text-stone-400 mb-3 transition-colors"
               />
-              <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
+              <div className="flex gap-1 bg-stone-100/90 p-1 rounded-xl border border-stone-200/60">
                 <button 
                   onClick={() => setStatusFilter('active')}
-                  className={`flex-1 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all ${statusFilter === 'active' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                  className={`flex-1 py-1 text-[9px] font-bold uppercase rounded-lg transition-all ${statusFilter === 'active' ? 'bg-white text-stone-800 shadow-2xs font-black' : 'text-stone-500 hover:text-stone-800'}`}
                 >
                   Ativos
                 </button>
                 <button 
                   onClick={() => setStatusFilter('inactive')}
-                  className={`flex-1 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all ${statusFilter === 'inactive' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                  className={`flex-1 py-1 text-[9px] font-bold uppercase rounded-lg transition-all ${statusFilter === 'inactive' ? 'bg-white text-stone-800 shadow-2xs font-black' : 'text-stone-500 hover:text-stone-800'}`}
                 >
                   Inat.
                 </button>
                 <button 
                   onClick={() => setStatusFilter('aee')}
-                  className={`flex-1 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all ${statusFilter === 'aee' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-600 hover:bg-purple-50'}`}
+                  className={`flex-1 py-1 text-[9px] font-bold uppercase rounded-lg transition-all ${statusFilter === 'aee' ? 'bg-purple-600 text-white shadow-2xs font-black' : 'text-purple-700 hover:bg-purple-50'}`}
                 >
                   AEE
                 </button>
                 <button 
                   onClick={() => setStatusFilter('all')}
-                  className={`flex-1 py-1.5 text-[9px] font-black uppercase rounded-lg transition-all ${statusFilter === 'all' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                  className={`flex-1 py-1 text-[9px] font-bold uppercase rounded-lg transition-all ${statusFilter === 'all' ? 'bg-white text-stone-800 shadow-2xs font-black' : 'text-stone-500 hover:text-stone-800'}`}
                 >
                   Todos
                 </button>
@@ -858,13 +858,13 @@ export function MainApp({
           </div>
         </aside>
 
-        <main className="flex-1 flex flex-col overflow-hidden bg-white rounded-3xl border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-          <nav className="h-14 bg-white border-b border-slate-100 flex items-center px-6 gap-6 shrink-0 overflow-x-auto">
+        <main className="flex-1 flex flex-col overflow-hidden bg-white/98 rounded-3xl border border-stone-200/90 shadow-[0_8px_30px_rgba(40,30,20,0.03)]">
+          <nav className="h-14 bg-white/95 border-b border-stone-100 flex items-center px-6 gap-6 shrink-0 overflow-x-auto">
             {subjects.map(sub => (
               <button 
                 key={sub.id} 
                 onClick={() => setActiveTab(sub.id)} 
-                className={`relative py-4 text-[11px] font-black uppercase whitespace-nowrap transition-all ${activeTab === sub.id ? 'text-escola-azul' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`relative py-4 text-[11px] font-bold uppercase whitespace-nowrap transition-all ${activeTab === sub.id ? 'text-escola-azul' : 'text-stone-400 hover:text-stone-700'}`}
               >
                 {sub.label}
                 {activeTab === sub.id && <div className="absolute bottom-[-4px] left-0 w-full h-[4px] bg-escola-verde rounded-t-lg" />}
@@ -873,7 +873,7 @@ export function MainApp({
 
             <button 
               onClick={() => setActiveTab('diagnostico')} 
-              className={`relative py-4 text-[11px] font-black uppercase whitespace-nowrap transition-all flex items-center gap-1.5 ${activeTab === 'diagnostico' ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+              className={`relative py-4 text-[11px] font-bold uppercase whitespace-nowrap transition-all flex items-center gap-1.5 ${activeTab === 'diagnostico' ? 'text-indigo-600' : 'text-stone-400 hover:text-stone-700'}`}
             >
               <BarChart3 className="w-4 h-4 text-indigo-500" />
               <span>Diagnóstico da Turma</span>
@@ -899,25 +899,30 @@ export function MainApp({
           ) : (
             <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
               <section>
-                {/* Bimestre Curriculum Filter & Organizer Bar */}
-                <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 p-4 sm:p-5 rounded-3xl text-white shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                {/* Bimestre Curriculum Filter & Organizer Bar - Luminous Glassmorphic Banner */}
+                <div className="relative overflow-hidden bg-gradient-to-r from-white/90 via-sky-50/65 to-emerald-50/70 backdrop-blur-xl p-4 sm:p-5 rounded-3xl border border-sky-100 shadow-[0_10px_30px_rgba(0,91,183,0.06)] flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-5">
+                  {/* Subtle Aurora Ambient Glass Glows */}
+                  <div className="absolute -top-12 -right-12 w-52 h-52 bg-gradient-to-br from-blue-400/18 via-sky-300/12 to-transparent rounded-full blur-2xl pointer-events-none" />
+                  <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-gradient-to-tr from-emerald-400/18 via-teal-300/12 to-transparent rounded-full blur-2xl pointer-events-none" />
+
+                  <div className="relative z-10 flex items-center gap-3.5">
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-escola-azul via-blue-600 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-blue-600/25 shrink-0">
                       <Target className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-escola-azul flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-escola-azul animate-pulse" />
                           {selectedUnit} • Planejamento Curricular
                         </span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-white border border-white/10">
+                        <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-white/90 text-stone-700 border border-stone-200/80 shadow-2xs">
                           {plannedInThisSubject.length} de {allSubjectSkills.length} nesta matéria
                         </span>
                       </div>
-                      <h3 className="text-sm sm:text-base font-black uppercase font-serif tracking-tight text-white mt-0.5">
+                      <h3 className="text-base sm:text-lg font-bold font-serif tracking-tight text-stone-900 mt-0.5">
                         Habilidades da Unidade
                       </h3>
-                      <p className="text-[11px] text-slate-300 font-medium">
+                      <p className="text-[11px] text-stone-500 font-medium">
                         {isBulkMode 
                           ? `Modo em lote ativo (${selectedStudentsBulk.length} selecionados)` 
                           : `Estudante: ${selectedStudent || 'Nenhum selecionado'}`}
@@ -925,15 +930,15 @@ export function MainApp({
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-between md:justify-end">
+                  <div className="relative z-10 flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-between md:justify-end">
                     {/* Segmented Filter Mode */}
-                    <div className="flex items-center bg-white/10 p-1 rounded-2xl border border-white/10">
+                    <div className="flex items-center bg-white/90 backdrop-blur-md p-1 rounded-2xl border border-stone-200/80 shadow-inner">
                       <button
                         onClick={() => setUnitScopeFilter('unit_only')}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-1.5 ${
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase transition-all flex items-center gap-1.5 ${
                           unitScopeFilter === 'unit_only'
-                            ? 'bg-emerald-500 text-white shadow-xs'
-                            : 'text-slate-300 hover:text-white'
+                            ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm'
+                            : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
                         }`}
                         title="Ver apenas as habilidades escolhidas para esta unidade"
                       >
@@ -942,10 +947,10 @@ export function MainApp({
                       </button>
                       <button
                         onClick={() => setUnitScopeFilter('all')}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-1.5 ${
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase transition-all flex items-center gap-1.5 ${
                           unitScopeFilter === 'all'
-                            ? 'bg-white text-slate-900 shadow-xs'
-                            : 'text-slate-300 hover:text-white'
+                            ? 'bg-stone-900 text-white shadow-sm'
+                            : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
                         }`}
                         title="Ver todas as habilidades cadastradas para o ano"
                       >
@@ -955,7 +960,7 @@ export function MainApp({
 
                     <button 
                       onClick={() => setUnitOrganizerOpen(true)} 
-                      className="px-3.5 py-2 bg-escola-azul hover:bg-blue-600 text-white text-xs font-black uppercase rounded-xl transition-all shadow-xs flex items-center gap-1.5 hover:scale-105 active:scale-95 shrink-0"
+                      className="px-4 py-2 bg-gradient-to-r from-escola-azul to-blue-600 hover:from-blue-700 hover:to-indigo-600 text-white text-xs font-bold uppercase rounded-xl transition-all shadow-md shadow-blue-600/20 flex items-center gap-1.5 hover:scale-105 active:scale-95 shrink-0"
                       title="Escolher e planejar as habilidades que serão trabalhadas nesta unidade"
                     >
                       <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -964,10 +969,10 @@ export function MainApp({
 
                     <button 
                       onClick={() => setSkillsModalOpen(true)} 
-                      className="text-[10px] font-bold text-slate-300 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-2 rounded-xl transition-all flex items-center gap-1 shrink-0"
+                      className="text-[10px] font-bold text-stone-700 hover:text-stone-900 bg-white/90 hover:bg-white border border-stone-200/90 px-3 py-2 rounded-xl transition-all flex items-center gap-1 shrink-0 shadow-2xs hover:shadow-xs"
                       title="Cadastrar novas habilidades na BNCC"
                     >
-                      <Sparkles className="w-3 h-3 text-sky-400" /> BNCC
+                      <Sparkles className="w-3 h-3 text-sky-500" /> BNCC
                     </button>
                   </div>
                 </div>
@@ -979,13 +984,13 @@ export function MainApp({
                       return (
                         <motion.button
                           key={filter.id}
-                          whileHover={{ scale: 1.04 }}
-                          whileTap={{ scale: 0.96 }}
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.97 }}
                           onClick={() => setActiveSubFilter(filter.id)}
-                          className={`px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${
+                          className={`px-3.5 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all ${
                             isSelected 
-                              ? 'bg-slate-800 text-white shadow-sm ring-2 ring-slate-800/20' 
-                              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+                              ? 'bg-stone-900 text-white shadow-xs' 
+                              : 'bg-white/80 backdrop-blur-xs border border-stone-200/90 text-stone-600 hover:bg-white hover:text-stone-900 shadow-2xs'
                           }`}
                         >
                           {filter.label}
@@ -1070,7 +1075,7 @@ export function MainApp({
                             className={`group relative p-4 rounded-2xl cursor-pointer transition-colors duration-200 flex flex-col justify-between gap-3 border select-none ${
                               isSet 
                                 ? 'bg-gradient-to-br from-emerald-50/90 via-white to-emerald-50/40 border-emerald-500 ring-2 ring-emerald-500/25 shadow-md shadow-emerald-500/10' 
-                                : 'bg-white/95 backdrop-blur-xs border-slate-200/90 hover:border-slate-300 hover:shadow-md hover:shadow-slate-200/60'
+                                : 'bg-white/95 backdrop-blur-xs border-stone-200/90 hover:border-stone-300 hover:shadow-md hover:shadow-stone-200/60'
                             }`}
                             style={{
                               borderLeftColor: s.color || (isSet ? '#10b981' : '#0ea5e9'),
@@ -1083,7 +1088,7 @@ export function MainApp({
                                   className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" 
                                   style={{ backgroundColor: s.color || '#0ea5e9' }} 
                                 />
-                                <span className={`text-[11px] font-black uppercase tracking-wider font-mono ${isSet ? 'text-emerald-700' : 'text-slate-700'}`}>
+                                <span className={`text-[11px] font-bold uppercase tracking-wider font-mono ${isSet ? 'text-emerald-700' : 'text-stone-700'}`}>
                                   {s.id}
                                 </span>
                                 {plannedSkillIdsForUnit.includes(s.id) ? (
@@ -1097,7 +1102,7 @@ export function MainApp({
                                 ) : (
                                   <button
                                     onClick={(e) => handleToggleSkillPlannedInUnit(s.id, e)}
-                                    className="inline-flex items-center gap-1 bg-slate-100 hover:bg-emerald-50 text-slate-400 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 text-[8px] px-2 py-0.5 rounded-full uppercase tracking-wider font-semibold transition-colors"
+                                    className="inline-flex items-center gap-1 bg-stone-100 hover:bg-emerald-50 text-stone-500 hover:text-emerald-700 border border-stone-200 hover:border-emerald-300 text-[8px] px-2 py-0.5 rounded-full uppercase tracking-wider font-semibold transition-colors"
                                     title="Clique para incluir no planejamento desta unidade."
                                   >
                                     <Pin className="w-2.5 h-2.5" /> + {selectedUnit}
@@ -1121,20 +1126,20 @@ export function MainApp({
                                     <Check className="w-3.5 h-3.5 stroke-[3]" />
                                   </motion.div>
                                 ) : (
-                                  <div className="w-6 h-6 rounded-full border-2 border-slate-300 group-hover:border-slate-400 group-hover:bg-slate-50 transition-colors flex items-center justify-center" />
+                                  <div className="w-6 h-6 rounded-full border-2 border-stone-300 group-hover:border-stone-400 group-hover:bg-stone-50 transition-colors flex items-center justify-center" />
                                 )}
                               </div>
                             </div>
 
-                            <p className={`text-[12px] leading-relaxed font-medium transition-colors ${isSet ? 'text-slate-900 font-semibold' : 'text-slate-600'}`}>
+                            <p className={`text-[12px] leading-relaxed transition-colors ${isSet ? 'text-stone-900 font-semibold' : 'text-stone-700 font-normal'}`}>
                               {s.report}
                             </p>
 
-                            <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[10px]">
-                              <span className="text-slate-400 font-semibold truncate max-w-[160px]">
+                            <div className="flex items-center justify-between pt-2 border-t border-stone-100 text-[10px]">
+                              <span className="text-stone-400 font-medium truncate max-w-[160px]">
                                 {s.category || `${s.grade}º Ano • BNCC`}
                               </span>
-                              <span className={`font-bold transition-colors ${isSet ? 'text-emerald-600' : 'text-slate-400 group-hover:text-slate-600'}`}>
+                              <span className={`font-bold transition-colors ${isSet ? 'text-emerald-700' : 'text-stone-400 group-hover:text-stone-700'}`}>
                                 {isSet ? '✓ Marcada' : '+ Marcar'}
                               </span>
                             </div>
@@ -1150,11 +1155,11 @@ export function MainApp({
         </main>
         
         {/* Floating Report Panel */}
-        <div className={`fixed bottom-6 right-6 w-[450px] bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-200 z-50 flex flex-col transition-all duration-500 transform ${isReportOpen && activeTab !== 'diagnostico' ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0 pointer-events-none'}`}>
-          <div className="bg-slate-900 p-4 flex justify-between items-center text-white rounded-t-3xl cursor-pointer" onClick={() => setIsReportOpen(false)}>
+        <div className={`fixed bottom-6 right-6 w-[460px] bg-white rounded-3xl shadow-[0_25px_60px_rgba(40,30,20,0.18)] border border-stone-200/90 z-50 flex flex-col transition-all duration-500 transform ${isReportOpen && activeTab !== 'diagnostico' ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0 pointer-events-none'}`}>
+          <div className="bg-stone-900 p-4 flex justify-between items-center text-white rounded-t-3xl cursor-pointer border-b border-stone-850" onClick={() => setIsReportOpen(false)}>
             <div className="flex items-center gap-2">
               <Edit3 className="w-4 h-4 text-escola-verde" />
-              <span className="text-xs font-black uppercase tracking-wider">{selectedStudent || "--"}</span>
+              <span className="text-xs font-serif font-bold tracking-wide text-stone-100">{selectedStudent || "--"}</span>
               {classData[selectedStudent]?.isAee && (
                 <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-purple-500 text-white">
                   AEE
@@ -1162,25 +1167,25 @@ export function MainApp({
               )}
             </div>
             <div className="flex gap-1.5 items-center">
-              <button onClick={(e) => { e.stopPropagation(); saveTemplate(); }} className="text-[9px] bg-slate-700 px-2 py-1.5 rounded-lg hover:bg-slate-600 text-white font-bold uppercase flex items-center gap-1 transition-colors" title="Salvar como Modelo"><Layers className="w-3 h-3" /> Salvar</button>
+              <button onClick={(e) => { e.stopPropagation(); saveTemplate(); }} className="text-[9px] bg-stone-800 px-2 py-1.5 rounded-lg hover:bg-stone-700 text-stone-200 hover:text-white font-bold uppercase flex items-center gap-1 transition-colors" title="Salvar como Modelo"><Layers className="w-3 h-3" /> Salvar</button>
               {templates.length > 0 && (
-                <select onClick={(e) => e.stopPropagation()} onChange={(e) => { if(e.target.value) loadTemplate(e.target.value); e.target.value = ''; }} className="text-[9px] px-2 py-1.5 rounded-lg font-bold uppercase bg-slate-700 hover:bg-slate-600 text-white outline-none cursor-pointer max-w-[80px]">
+                <select onClick={(e) => e.stopPropagation()} onChange={(e) => { if(e.target.value) loadTemplate(e.target.value); e.target.value = ''; }} className="text-[9px] px-2 py-1.5 rounded-lg font-bold uppercase bg-stone-800 hover:bg-stone-700 text-stone-200 hover:text-white outline-none cursor-pointer max-w-[80px]">
                   <option value="">Modelos</option>
                   {templates.map(t => <option key={t.name} value={t.text}>{t.name}</option>)}
                 </select>
               )}
-              <button onClick={(e) => { e.stopPropagation(); setIsReadMode(!isReadMode); }} className={`text-[9px] px-2 py-1.5 rounded-lg font-bold uppercase flex items-center gap-1 transition-colors ${isReadMode ? 'bg-amber-100 text-amber-900' : 'bg-slate-700 hover:bg-slate-600 text-white'}`}><Book className="w-3 h-3" /> {isReadMode ? 'Normal' : 'Leitura'}</button>
+              <button onClick={(e) => { e.stopPropagation(); setIsReadMode(!isReadMode); }} className={`text-[9px] px-2 py-1.5 rounded-lg font-bold uppercase flex items-center gap-1 transition-colors ${isReadMode ? 'bg-amber-100 text-amber-900' : 'bg-stone-800 hover:bg-stone-700 text-stone-200'}`}><Book className="w-3 h-3" /> {isReadMode ? 'Normal' : 'Leitura'}</button>
               <button onClick={(e) => { e.stopPropagation(); exportIndividualDocx('unit'); }} className="text-[9px] bg-escola-azul px-2 py-1.5 rounded-lg hover:bg-blue-600 text-white font-bold uppercase flex items-center gap-1 transition-colors"><Download className="w-3 h-3" /> Unidade</button>
               <button onClick={(e) => { e.stopPropagation(); exportIndividualDocx('history'); }} className="text-[9px] bg-escola-azul px-2 py-1.5 rounded-lg hover:bg-blue-600 text-white font-bold uppercase flex items-center gap-1 transition-colors"><Download className="w-3 h-3" /> Histórico</button>
             </div>
           </div>
-          <div className={`p-5 h-[320px] flex flex-col overflow-y-auto rounded-b-3xl transition-colors ${isReadMode ? 'bg-[#fdf6e3]' : 'bg-slate-50'}`}>
+          <div className={`p-5 h-[320px] flex flex-col overflow-y-auto rounded-b-3xl transition-colors ${isReadMode ? 'bg-[#fdf9ee]' : 'bg-stone-50/70'}`}>
             {classData[selectedStudent]?.isAee && (
               <div className="mb-3 p-2.5 bg-purple-50/90 border border-purple-200 rounded-xl text-[10px] text-purple-900 flex items-start gap-2 shadow-2xs">
                 <HeartHandshake className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
-                    <span className="font-black uppercase tracking-wider text-[9px] text-purple-800">Estudante AEE / PEI</span>
+                    <span className="font-bold uppercase tracking-wider text-[9px] text-purple-800">Estudante AEE / PEI</span>
                     <span className="text-[9px] font-bold bg-purple-200/70 text-purple-900 px-2 py-0.5 rounded-md">
                       {classData[selectedStudent]?.aeeType || 'Adaptação Curricular'}
                     </span>
@@ -1200,9 +1205,9 @@ export function MainApp({
                 const prevUnitText = classData[selectedStudent][prevUnit]?.observation;
                 if (prevUnitText) {
                   return (
-                    <div className="mb-4 p-3 bg-slate-100/80 rounded-xl border border-slate-200">
-                      <p className="text-[9px] font-black text-slate-400 mb-1.5 uppercase tracking-widest">Histórico ({prevUnit})</p>
-                      <p className="text-[10px] text-slate-600 uppercase italic line-clamp-3 hover:line-clamp-none transition-all cursor-pointer leading-relaxed">{prevUnitText}</p>
+                    <div className="mb-4 p-3 bg-stone-100/90 rounded-xl border border-stone-200">
+                      <p className="text-[9px] font-bold text-stone-500 mb-1.5 uppercase tracking-widest">Histórico ({prevUnit})</p>
+                      <p className="text-[10px] text-stone-600 uppercase italic line-clamp-3 hover:line-clamp-none transition-all cursor-pointer leading-relaxed">{prevUnitText}</p>
                     </div>
                   );
                 }
@@ -1215,7 +1220,7 @@ export function MainApp({
               contentEditable={!isBulkMode && !!selectedStudent} 
               onInput={handleManualEdit}
               onBlur={handleManualEdit}
-              className={`font-['Plus_Jakarta_Sans'] leading-[1.8] text-[12px] outline-none p-5 rounded-2xl uppercase text-justify min-h-[150px] flex-1 transition-all shadow-sm border ${isReadMode ? 'bg-[#fffbf0] border-amber-200 text-slate-900 focus:border-amber-400 font-medium' : 'bg-white border-slate-200 focus:border-amber-400 text-slate-800'}`}
+              className={`font-serif leading-[1.8] text-[13px] outline-none p-5 rounded-2xl uppercase text-justify min-h-[150px] flex-1 transition-all shadow-inner border ${isReadMode ? 'bg-[#fffdf8] border-amber-200 text-stone-900 focus:border-amber-400 font-normal' : 'bg-white border-stone-200/90 focus:border-stone-400 text-stone-900 font-normal'}`}
             />
           </div>
         </div>

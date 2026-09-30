@@ -3,8 +3,9 @@
 @theme {
   --color-escola-azul: #005bb7;
   --color-escola-verde: #7fb432;
-  --color-bg-main: #fcfdfe;
+  --color-bg-main: #fbf9f5;
   --font-sans: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-lora), ui-serif, Georgia, Cambria, serif;
   --animate-shake: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
   --animate-flip-in: flipIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
   
@@ -32,17 +33,27 @@
 :root {
   --escola-azul: #005bb7;
   --escola-verde: #7fb432;
-  --bg-main: #fcfdfe;
+  --bg-main: #fbf9f5;
 }
 
 body {
   background-color: var(--bg-main);
-  color: #1e293b;
+  color: #1c1917;
   font-size: 13px;
 }
 
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #a8a29e; }
+
+/* Opção B: Papel / Mesa Editorial Acolhedora */
+.escolar-bg {
+  background-color: #f7f5f0;
+  background-image: 
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.85) 0%, rgba(247, 245, 240, 0.4) 70%),
+    radial-gradient(circle at 1px 1px, rgba(120, 113, 108, 0.08) 1.2px, transparent 0);
+  background-size: 100% 100%, 26px 26px;
+}
 
 .nordeste-bg {
   background-color: #faf8f5;
