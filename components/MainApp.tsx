@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Home, Download, Edit3, Trash2, CheckCircle2, Menu, Clock, Bell, Book, CheckSquare, Square, Layers, Sparkles, Check, BarChart3, Search, BookOpen, HeartHandshake, SlidersHorizontal, Target, Pin, Heart, ArrowUpDown, FileSpreadsheet, Award } from 'lucide-react';
+import { Home, Download, Edit3, Trash2, CheckCircle2, Menu, Clock, Bell, Book, CheckSquare, Square, Layers, Sparkles, Check, BarChart3, Search, BookOpen, HeartHandshake, SlidersHorizontal, Target, Pin, Heart, ArrowUpDown, FileSpreadsheet, Award, ChevronDown, Copy, FileText, History, ChevronRight, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppData, Skill, ClassData } from '@/lib/types';
 import { units, subjects } from '@/lib/constants';
@@ -70,9 +70,25 @@ export function MainApp({
 
   const [isReportOpen, setIsReportOpen] = useState(true);
   const [isReadMode, setIsReadMode] = useState(false);
+  const [activeReportTab, setActiveReportTab] = useState<'current' | 'history' | 'aee'>('current');
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [toolsMenuOpen, setToolsMenuOpen] = useState(false);
+  const [copiedFeedback, setCopiedFeedback] = useState(false);
+  const [wordCount, setWordCount] = useState({ words: 0, chars: 0 });
   const [templates, setTemplates] = useState<{name: string, text: string}[]>([]);
 
   const reportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setExportMenuOpen(false);
+      setToolsMenuOpen(false);
+    };
+    if (exportMenuOpen || toolsMenuOpen) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [exportMenuOpen, toolsMenuOpen]);
 
   useEffect(() => {
     setActiveSubFilter("all");
@@ -351,6 +367,9 @@ export function MainApp({
   const handleManualEdit = () => {
     if (!selectedStudent || !reportRef.current) return;
     const text = reportRef.current.innerText.toUpperCase();
+    const clean = text.trim();
+    const words = clean ? clean.split(/\s+/).filter(Boolean).length : 0;
+    setWordCount({ words, chars: clean.length });
     
     onUpdateAppData({
       ...appData,
@@ -611,7 +630,30 @@ export function MainApp({
     if (reportRef.current && document.activeElement !== reportRef.current) {
       reportRef.current.innerText = reportText;
     }
+    const clean = (reportRef.current?.innerText || reportText || "").trim();
+    const words = clean ? clean.split(/\s+/).filter(Boolean).length : 0;
+    setWordCount({ words, chars: clean.length });
   }, [reportText, selectedStudent, selectedUnit]);
+
+  const unitIndex = units.indexOf(selectedUnit);
+  const prevUnit = unitIndex > 0 ? units[unitIndex - 1] : "";
+  const prevUnitText = prevUnit && selectedStudent && classData[selectedStudent] 
+    ? classData[selectedStudent][prevUnit]?.observation 
+    : "";
+
+  useEffect(() => {
+    if (activeReportTab === 'history' && !prevUnitText) {
+      setActiveReportTab('current');
+    }
+  }, [selectedUnit, selectedStudent, prevUnitText, activeReportTab]);
+
+  const handleCopyReport = () => {
+    const text = reportRef.current?.innerText || reportText || '';
+    if (!text || text === 'SELECIONE UM ESTUDANTE...' || text.startsWith('AGUARDANDO SELEÇÃO')) return;
+    navigator.clipboard.writeText(text);
+    setCopiedFeedback(true);
+    setTimeout(() => setCopiedFeedback(false), 2000);
+  };
 
   const exportIndividualDocx = async (type: 'unit' | 'history') => {
     if (!selectedStudent) return;
@@ -1008,26 +1050,43 @@ export function MainApp({
         </aside>
 
         <main className="flex-1 flex flex-col overflow-hidden bg-white/98 rounded-3xl border border-stone-200/90 shadow-[0_8px_30px_rgba(40,30,20,0.03)]">
-          <nav className="h-14 bg-white/95 border-b border-stone-100 flex items-center px-6 gap-6 shrink-0 overflow-x-auto">
-            {subjects.map(sub => (
-              <button 
-                key={sub.id} 
-                onClick={() => setActiveTab(sub.id)} 
-                className={`relative py-4 text-[11px] font-bold uppercase whitespace-nowrap transition-all ${activeTab === sub.id ? 'text-escola-azul' : 'text-stone-400 hover:text-stone-700'}`}
-              >
-                {sub.label}
-                {activeTab === sub.id && <div className="absolute bottom-[-4px] left-0 w-full h-[4px] bg-escola-verde rounded-t-lg" />}
-              </button>
-            ))}
+          <nav className="h-14 bg-white/95 border-b border-stone-100 flex items-center px-6 gap-6 shrink-0 overflow-x-auto justify-between">
+            <div className="flex items-center gap-6">
+              {subjects.map(sub => (
+                <button 
+                  key={sub.id} 
+                  onClick={() => setActiveTab(sub.id)} 
+                  className={`relative py-4 text-[11px] font-bold uppercase whitespace-nowrap transition-all ${activeTab === sub.id ? 'text-escola-azul' : 'text-stone-400 hover:text-stone-700'}`}
+                >
+                  {sub.label}
+                  {activeTab === sub.id && <div className="absolute bottom-[-4px] left-0 w-full h-[4px] bg-escola-verde rounded-t-lg" />}
+                </button>
+              ))}
 
-            <button 
-              onClick={() => setActiveTab('diagnostico')} 
-              className={`relative py-4 text-[11px] font-bold uppercase whitespace-nowrap transition-all flex items-center gap-1.5 ${activeTab === 'diagnostico' ? 'text-indigo-600' : 'text-stone-400 hover:text-stone-700'}`}
-            >
-              <BarChart3 className="w-4 h-4 text-indigo-500" />
-              <span>Diagnóstico da Turma</span>
-              {activeTab === 'diagnostico' && <div className="absolute bottom-[-4px] left-0 w-full h-[4px] bg-indigo-500 rounded-t-lg" />}
-            </button>
+              <button 
+                onClick={() => setActiveTab('diagnostico')} 
+                className={`relative py-4 text-[11px] font-bold uppercase whitespace-nowrap transition-all flex items-center gap-1.5 ${activeTab === 'diagnostico' ? 'text-indigo-600' : 'text-stone-400 hover:text-stone-700'}`}
+              >
+                <BarChart3 className="w-4 h-4 text-indigo-500" />
+                <span>Diagnóstico da Turma</span>
+                {activeTab === 'diagnostico' && <div className="absolute bottom-[-4px] left-0 w-full h-[4px] bg-indigo-500 rounded-t-lg" />}
+              </button>
+            </div>
+
+            {activeTab !== 'diagnostico' && (
+              <button 
+                onClick={() => setIsReportOpen(!isReportOpen)} 
+                className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all shrink-0 ${
+                  isReportOpen 
+                    ? 'bg-stone-100 text-stone-700 hover:bg-stone-200' 
+                    : 'bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs hover:bg-emerald-100'
+                }`}
+                title={isReportOpen ? "Ocultar painel lateral do parecer" : "Exibir painel lateral do parecer"}
+              >
+                <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{isReportOpen ? "Ocultar Parecer" : "Ver Parecer"}</span>
+              </button>
+            )}
           </nav>
 
           {activeTab === 'diagnostico' ? (
@@ -1046,8 +1105,10 @@ export function MainApp({
               }}
             />
           ) : (
-            <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
-              <section>
+            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
+              {/* Left/Center: Skills & Curriculum (scrollable) */}
+              <div className="flex-1 overflow-y-auto p-5 md:p-7 space-y-5 min-w-0">
+                <section>
                 {/* Bimestre Curriculum Filter & Organizer Bar - Luminous Glassmorphic Banner */}
                 <div className="relative overflow-hidden bg-gradient-to-r from-white/90 via-sky-50/65 to-emerald-50/70 backdrop-blur-xl p-4 sm:p-5 rounded-3xl border border-sky-100 shadow-[0_10px_30px_rgba(0,91,183,0.06)] flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-5">
                   {/* Subtle Aurora Ambient Glass Glows */}
@@ -1300,98 +1361,320 @@ export function MainApp({
                 )}
               </section>
             </div>
-          )}
-        </main>
-        
-        {/* Floating Report Panel */}
-        <div className={`fixed bottom-6 right-6 w-[460px] bg-white rounded-3xl shadow-[0_25px_60px_rgba(40,30,20,0.18)] border border-stone-200/90 z-50 flex flex-col transition-all duration-500 transform ${isReportOpen && activeTab !== 'diagnostico' ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0 pointer-events-none'}`}>
-          <div className="bg-stone-900 p-4 flex justify-between items-center text-white rounded-t-3xl cursor-pointer border-b border-stone-850" onClick={() => setIsReportOpen(false)}>
-            <div className="flex items-center gap-2">
-              <Edit3 className="w-4 h-4 text-escola-verde" />
-              <span className="text-xs font-serif font-bold tracking-wide text-stone-100">{selectedStudent || "--"}</span>
-              {classData[selectedStudent]?.isAee && (
-                <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-purple-500 text-white">
-                  AEE
-                </span>
-              )}
-            </div>
-            <div className="flex gap-1.5 items-center">
-              <button 
-                onClick={(e) => { e.stopPropagation(); setFamilyReportOpen(true); }} 
-                className="text-[9px] bg-emerald-600 hover:bg-emerald-700 px-2 py-1.5 rounded-lg text-white font-bold uppercase flex items-center gap-1 transition-colors" 
-                title="Gerar Ficha Resumida para a Família (A4)"
-              >
-                <Heart className="w-3 h-3 text-emerald-200" /> Família
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); saveTemplate(); }} className="text-[9px] bg-stone-800 px-2 py-1.5 rounded-lg hover:bg-stone-700 text-stone-200 hover:text-white font-bold uppercase flex items-center gap-1 transition-colors" title="Salvar como Modelo"><Layers className="w-3 h-3" /> Salvar</button>
-              {templates.length > 0 && (
-                <select onClick={(e) => e.stopPropagation()} onChange={(e) => { if(e.target.value) loadTemplate(e.target.value); e.target.value = ''; }} className="text-[9px] px-2 py-1.5 rounded-lg font-bold uppercase bg-stone-800 hover:bg-stone-700 text-stone-200 hover:text-white outline-none cursor-pointer max-w-[80px]">
-                  <option value="">Modelos</option>
-                  {templates.map(t => <option key={t.name} value={t.text}>{t.name}</option>)}
-                </select>
-              )}
-              <button onClick={(e) => { e.stopPropagation(); setIsReadMode(!isReadMode); }} className={`text-[9px] px-2 py-1.5 rounded-lg font-bold uppercase flex items-center gap-1 transition-colors ${isReadMode ? 'bg-amber-100 text-amber-900' : 'bg-stone-800 hover:bg-stone-700 text-stone-200'}`}><Book className="w-3 h-3" /> {isReadMode ? 'Normal' : 'Leitura'}</button>
-              <button onClick={(e) => { e.stopPropagation(); exportIndividualDocx('unit'); }} className="text-[9px] bg-escola-azul px-2 py-1.5 rounded-lg hover:bg-blue-600 text-white font-bold uppercase flex items-center gap-1 transition-colors"><Download className="w-3 h-3" /> Unidade</button>
-              <button onClick={(e) => { e.stopPropagation(); exportIndividualDocx('history'); }} className="text-[9px] bg-escola-azul px-2 py-1.5 rounded-lg hover:bg-blue-600 text-white font-bold uppercase flex items-center gap-1 transition-colors"><Download className="w-3 h-3" /> Histórico</button>
-            </div>
-          </div>
-          <div className={`p-5 h-[320px] flex flex-col overflow-y-auto rounded-b-3xl transition-colors ${isReadMode ? 'bg-[#fdf9ee]' : 'bg-stone-50/70'}`}>
-            {classData[selectedStudent]?.isAee && (
-              <div className="mb-3 p-2.5 bg-purple-50/90 border border-purple-200 rounded-xl text-[10px] text-purple-900 flex items-start gap-2 shadow-2xs">
-                <HeartHandshake className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold uppercase tracking-wider text-[9px] text-purple-800">Estudante AEE / PEI</span>
-                    <span className="text-[9px] font-bold bg-purple-200/70 text-purple-900 px-2 py-0.5 rounded-md">
-                      {classData[selectedStudent]?.aeeType || 'Adaptação Curricular'}
+
+            {/* Right: Integrated Split-Screen Report Panel (No overlapping!) */}
+            {isReportOpen && (
+              <aside className="w-full lg:w-[410px] xl:w-[450px] 2xl:w-[480px] border-t lg:border-t-0 lg:border-l border-stone-200/80 bg-stone-50/70 flex flex-col shrink-0 overflow-hidden h-[450px] lg:h-full z-10 transition-all duration-300">
+                {/* Header of Report Panel */}
+                <div className="bg-stone-900 px-4 py-3 flex items-center justify-between text-white shrink-0 border-b border-stone-800">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Edit3 className="w-4 h-4 text-escola-verde shrink-0" />
+                    <span className="text-xs font-serif font-bold tracking-wide text-stone-100 truncate" title={selectedStudent || "Sem aluno"}>
+                      {selectedStudent || "Selecione um Estudante"}
                     </span>
+                    {classData[selectedStudent]?.isAee && (
+                      <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-purple-500 text-white shrink-0">
+                        AEE
+                      </span>
+                    )}
                   </div>
-                  {classData[selectedStudent]?.aeeNotes && (
-                    <p className="text-[10px] text-purple-800 mt-1 leading-relaxed italic">
-                      {classData[selectedStudent]?.aeeNotes}
-                    </p>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {/* Menu Exportar */}
+                    <div className="relative">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setExportMenuOpen(!exportMenuOpen); setToolsMenuOpen(false); }}
+                        className="text-[9px] bg-stone-800 hover:bg-stone-700 text-stone-200 hover:text-white px-2.5 py-1.5 rounded-lg font-bold uppercase flex items-center gap-1 transition-colors"
+                        title="Opções de Exportação"
+                      >
+                        <Download className="w-3 h-3 text-sky-400" />
+                        <span>Exportar</span>
+                        <ChevronDown className="w-2.5 h-2.5" />
+                      </button>
+
+                      {exportMenuOpen && (
+                        <div 
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute right-0 top-full mt-1.5 w-52 bg-white rounded-xl shadow-xl border border-stone-200 py-1.5 z-50 animate-in fade-in zoom-in-95"
+                        >
+                          <div className="px-3 py-1 text-[9px] font-bold text-stone-400 uppercase tracking-wider">Documentos DOCX</div>
+                          <button
+                            onClick={() => { setExportMenuOpen(false); exportIndividualDocx('unit'); }}
+                            className="w-full px-3 py-2 text-left text-xs font-medium text-stone-700 hover:bg-stone-100 flex items-center gap-2 transition-colors"
+                          >
+                            <Download className="w-3.5 h-3.5 text-stone-400" />
+                            <span>Parecer da Unidade ({selectedUnit})</span>
+                          </button>
+                          <button
+                            onClick={() => { setExportMenuOpen(false); exportIndividualDocx('history'); }}
+                            className="w-full px-3 py-2 text-left text-xs font-medium text-stone-700 hover:bg-stone-100 flex items-center gap-2 transition-colors"
+                          >
+                            <Download className="w-3.5 h-3.5 text-stone-400" />
+                            <span>Histórico Anual Completo</span>
+                          </button>
+                          <div className="border-t border-stone-100 my-1"></div>
+                          <div className="px-3 py-1 text-[9px] font-bold text-stone-400 uppercase tracking-wider">Devolutiva</div>
+                          <button
+                            onClick={() => { setExportMenuOpen(false); setFamilyReportOpen(true); }}
+                            className="w-full px-3 py-2 text-left text-xs font-medium text-emerald-800 hover:bg-emerald-50 flex items-center gap-2 transition-colors"
+                          >
+                            <Heart className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Ficha para a Família (A4)</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Menu Ações & Ferramentas */}
+                    <div className="relative">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setToolsMenuOpen(!toolsMenuOpen); setExportMenuOpen(false); }}
+                        className="text-[9px] bg-stone-800 hover:bg-stone-700 text-stone-200 hover:text-white px-2.5 py-1.5 rounded-lg font-bold uppercase flex items-center gap-1 transition-colors"
+                        title="Ferramentas e Modelos"
+                      >
+                        <SlidersHorizontal className="w-3 h-3 text-amber-400" />
+                        <span>Ações</span>
+                        <ChevronDown className="w-2.5 h-2.5" />
+                      </button>
+
+                      {toolsMenuOpen && (
+                        <div 
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute right-0 top-full mt-1.5 w-56 bg-white rounded-xl shadow-xl border border-stone-200 py-1.5 z-50 animate-in fade-in zoom-in-95"
+                        >
+                          <button
+                            onClick={() => { setToolsMenuOpen(false); setIsPhraseBankOpen(true); }}
+                            className="w-full px-3 py-2 text-left text-xs font-medium text-stone-700 hover:bg-stone-100 flex items-center gap-2 transition-colors"
+                          >
+                            <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Banco de Frases & Conectivos</span>
+                          </button>
+                          <button
+                            onClick={() => { setToolsMenuOpen(false); setIsReadMode(!isReadMode); }}
+                            className="w-full px-3 py-2 text-left text-xs font-medium text-stone-700 hover:bg-stone-100 flex items-center gap-2 transition-colors"
+                          >
+                            <Book className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Modo {isReadMode ? 'Edição' : 'Leitura'}</span>
+                          </button>
+                          <button
+                            onClick={() => { setToolsMenuOpen(false); saveTemplate(); }}
+                            className="w-full px-3 py-2 text-left text-xs font-medium text-stone-700 hover:bg-stone-100 flex items-center gap-2 transition-colors"
+                          >
+                            <Layers className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Salvar como Modelo</span>
+                          </button>
+
+                          {templates.length > 0 && (
+                            <>
+                              <div className="border-t border-stone-100 my-1"></div>
+                              <div className="px-3 py-1 text-[9px] font-bold text-stone-400 uppercase tracking-wider">Modelos Salvos</div>
+                              {templates.map(t => (
+                                <button
+                                  key={t.name}
+                                  onClick={() => { setToolsMenuOpen(false); loadTemplate(t.text); }}
+                                  className="w-full px-3 py-1.5 text-left text-xs text-stone-600 hover:bg-stone-100 truncate block transition-colors"
+                                  title={t.name}
+                                >
+                                  📄 {t.name}
+                                </button>
+                              ))}
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Botão Copiar */}
+                    <button 
+                      onClick={handleCopyReport} 
+                      className={`text-[9px] px-2 py-1.5 rounded-lg font-bold uppercase flex items-center gap-1 transition-colors ${
+                        copiedFeedback 
+                          ? 'bg-emerald-600 text-white' 
+                          : 'bg-stone-800 hover:bg-stone-700 text-stone-200 hover:text-white'
+                      }`}
+                      title="Copiar Parecer Completo"
+                    >
+                      {copiedFeedback ? <Check className="w-3 h-3 text-white" /> : <Copy className="w-3 h-3 text-stone-300" />}
+                      <span className="hidden xl:inline">{copiedFeedback ? 'Copiado!' : 'Copiar'}</span>
+                    </button>
+
+                    {/* Botão Recolher */}
+                    <button 
+                      onClick={() => setIsReportOpen(false)}
+                      className="text-stone-400 hover:text-white p-1 rounded-lg hover:bg-stone-800 transition-colors ml-0.5"
+                      title="Ocultar Painel do Parecer"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Abas Internas: Parecer Atual | Histórico | AEE */}
+                <div className="flex items-center bg-stone-100/90 border-b border-stone-200/80 px-3 py-1.5 gap-1 shrink-0 overflow-x-auto">
+                  <button
+                    onClick={() => setActiveReportTab('current')}
+                    className={`px-3 py-1 text-[10px] font-bold uppercase rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                      activeReportTab === 'current'
+                        ? 'bg-white text-stone-900 shadow-2xs font-black'
+                        : 'text-stone-500 hover:text-stone-800'
+                    }`}
+                  >
+                    <FileText className="w-3 h-3 text-escola-azul" />
+                    <span>Parecer ({selectedUnit})</span>
+                  </button>
+
+                  {prevUnitText && (
+                    <button
+                      onClick={() => setActiveReportTab('history')}
+                      className={`px-3 py-1 text-[10px] font-bold uppercase rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                        activeReportTab === 'history'
+                          ? 'bg-white text-stone-900 shadow-2xs font-black'
+                          : 'text-stone-500 hover:text-stone-800'
+                      }`}
+                    >
+                      <History className="w-3 h-3 text-amber-500" />
+                      <span>Histórico ({prevUnit})</span>
+                    </button>
+                  )}
+
+                  {classData[selectedStudent]?.isAee && (
+                    <button
+                      onClick={() => setActiveReportTab('aee')}
+                      className={`px-3 py-1 text-[10px] font-bold uppercase rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                        activeReportTab === 'aee'
+                          ? 'bg-purple-100 text-purple-900 shadow-2xs font-black'
+                          : 'text-purple-700 hover:text-purple-900'
+                      }`}
+                    >
+                      <HeartHandshake className="w-3 h-3 text-purple-600" />
+                      <span>AEE / PEI</span>
+                    </button>
                   )}
                 </div>
-              </div>
-            )}
-            {(() => {
-              const unitIndex = units.indexOf(selectedUnit);
-              if (unitIndex > 0 && selectedStudent && classData[selectedStudent]) {
-                const prevUnit = units[unitIndex - 1];
-                const prevUnitText = classData[selectedStudent][prevUnit]?.observation;
-                if (prevUnitText) {
-                  return (
-                    <div className="mb-4 p-3 bg-stone-100/90 rounded-xl border border-stone-200">
-                      <p className="text-[9px] font-bold text-stone-500 mb-1.5 uppercase tracking-widest">Histórico ({prevUnit})</p>
-                      <p className="text-[10px] text-stone-600 uppercase italic line-clamp-3 hover:line-clamp-none transition-all cursor-pointer leading-relaxed">{prevUnitText}</p>
-                    </div>
-                  );
-                }
-              }
-              return null;
-            })()}
-            <div 
-              ref={reportRef}
-              spellCheck={true}
-              contentEditable={!isBulkMode && !!selectedStudent} 
-              onInput={handleManualEdit}
-              onBlur={handleManualEdit}
-              className={`font-serif leading-[1.8] text-[13px] outline-none p-5 rounded-2xl uppercase text-justify min-h-[150px] flex-1 transition-all shadow-inner border ${isReadMode ? 'bg-[#fffdf8] border-amber-200 text-stone-900 focus:border-amber-400 font-normal' : 'bg-white border-stone-200/90 focus:border-stone-400 text-stone-900 font-normal'}`}
-            />
-          </div>
-        </div>
 
-        {/* Toggle Button if closed */}
-        {!isReportOpen && (
-          <button 
-            onClick={() => setIsReportOpen(true)}
-            className="fixed bottom-6 right-6 bg-slate-900 text-white px-6 py-4 rounded-full shadow-2xl font-black uppercase text-xs flex items-center gap-3 hover:bg-slate-800 transition-all z-50 hover:scale-105 animate-in fade-in slide-in-from-bottom-4"
-          >
-            <Edit3 className="w-4 h-4 text-escola-verde" />
-            Ver Parecer
-          </button>
+                {/* Conteúdo da Aba Selecionada */}
+                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                  {activeReportTab === 'current' && (
+                    <div className={`p-4 flex-1 flex flex-col overflow-y-auto ${isReadMode ? 'bg-[#fdf9ee]' : 'bg-white'}`}>
+                      <div 
+                        ref={reportRef}
+                        spellCheck={true}
+                        contentEditable={!isBulkMode && !!selectedStudent} 
+                        onInput={handleManualEdit}
+                        onBlur={handleManualEdit}
+                        className={`font-serif leading-[1.8] text-[13px] outline-none p-4 rounded-2xl uppercase text-justify flex-1 transition-all border ${
+                          isReadMode 
+                            ? 'bg-[#fffdf8] border-amber-200 text-stone-900' 
+                            : 'bg-stone-50/60 border-stone-200/80 focus:bg-white focus:border-stone-400 text-stone-900'
+                        }`}
+                      />
+                    </div>
+                  )}
+
+                  {activeReportTab === 'history' && (
+                    <div className="p-4 flex-1 overflow-y-auto space-y-3 bg-stone-50/50">
+                      <div className="bg-white p-4 rounded-2xl border border-stone-200/80 shadow-2xs space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-amber-800 uppercase tracking-widest flex items-center gap-1.5">
+                            <History className="w-3.5 h-3.5 text-amber-500" />
+                            Parecer Registrado em {prevUnit}
+                          </span>
+                          <button
+                            onClick={() => {
+                              if (reportRef.current && prevUnitText) {
+                                const current = reportRef.current.innerText;
+                                reportRef.current.innerText = current ? `${current}\n\n[CONTINUIDADE DE ${prevUnit}]: ${prevUnitText}` : prevUnitText;
+                                handleManualEdit();
+                                setActiveReportTab('current');
+                              }
+                            }}
+                            className="text-[9px] font-bold uppercase bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
+                            title="Inserir texto do histórico no parecer atual"
+                          >
+                            <Pin className="w-3 h-3" />
+                            <span>Inserir no Parecer</span>
+                          </button>
+                        </div>
+                        <p className="font-serif text-[12px] uppercase leading-relaxed text-stone-700 text-justify bg-stone-50 p-3.5 rounded-xl border border-stone-200/60">
+                          {prevUnitText}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeReportTab === 'aee' && (
+                    <div className="p-4 flex-1 overflow-y-auto space-y-3 bg-purple-50/20">
+                      <div className="bg-white p-4 rounded-2xl border border-purple-200 shadow-2xs space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-purple-900 uppercase tracking-wider flex items-center gap-1.5">
+                            <HeartHandshake className="w-4 h-4 text-purple-600" />
+                            Atendimento Especializado (AEE / PEI)
+                          </span>
+                          <button
+                            onClick={() => {
+                              setStudentToEdit(selectedStudent);
+                              setStudentModalOpen(true);
+                            }}
+                            className="text-[9px] font-bold uppercase bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                            <span>Editar PEI</span>
+                          </button>
+                        </div>
+                        <div className="p-3 bg-purple-50/80 rounded-xl border border-purple-200/60">
+                          <p className="text-[9px] font-bold text-purple-700 uppercase tracking-wider">Tipo de Diagnóstico / Adaptação:</p>
+                          <p className="text-xs font-bold text-purple-950 mt-0.5">
+                            {classData[selectedStudent]?.aeeType || "Adaptação Curricular Regular"}
+                          </p>
+                        </div>
+                        {classData[selectedStudent]?.aeeNotes ? (
+                          <div className="p-3 bg-stone-50 rounded-xl border border-stone-200/80">
+                            <p className="text-[9px] font-bold text-stone-500 uppercase tracking-wider mb-1">Diretrizes Pedagógicas Registradas:</p>
+                            <p className="text-[12px] leading-relaxed text-stone-800 italic">
+                              &quot;{classData[selectedStudent]?.aeeNotes}&quot;
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-stone-500 italic">
+                            Nenhuma observação complementar registrada no PEI do estudante.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Rodapé Ergonômico com Contagem de Palavras e Salvamento */}
+                <div className="bg-stone-100/90 border-t border-stone-200/80 px-4 py-2 flex items-center justify-between text-[10px] text-stone-500 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-medium text-stone-700">{wordCount.words} palavras</span>
+                    <span>•</span>
+                    <span className="font-mono text-stone-500">{wordCount.chars} caracteres</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-stone-400 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-500" /> Salvo aut.
+                    </span>
+                  </div>
+                </div>
+              </aside>
+            )}
+          </div>
         )}
-      </div>
+      </main>
+
+      {/* Botão de Reabrir o Parecer se estiver recolhido */}
+      {!isReportOpen && activeTab !== 'diagnostico' && (
+        <button 
+          onClick={() => setIsReportOpen(true)}
+          className="fixed bottom-6 right-6 bg-stone-900 hover:bg-stone-800 text-white px-5 py-3.5 rounded-full shadow-2xl font-bold uppercase text-xs flex items-center gap-2.5 transition-all z-40 hover:scale-105 active:scale-95 animate-in fade-in slide-in-from-bottom-4 border border-stone-700"
+          title="Abrir painel lateral do parecer"
+        >
+          <Edit3 className="w-4 h-4 text-emerald-400" />
+          <span>Ver Parecer ({selectedStudent || 'Estudante'})</span>
+        </button>
+      )}
+    </div>
 
       <StudentModal 
         isOpen={studentModalOpen} 
