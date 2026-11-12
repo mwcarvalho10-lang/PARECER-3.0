@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Home, Download, Edit3, Trash2, CheckCircle2, Menu, Clock, Bell, Book, CheckSquare, Square, Layers, Sparkles, Check, BarChart3, Search, BookOpen, HeartHandshake, SlidersHorizontal, Target, Pin, Heart, ArrowUpDown, FileSpreadsheet, Award, ChevronDown, Copy, FileText, History, ChevronRight, X } from 'lucide-react';
+import { Home, Download, Edit3, Trash2, CheckCircle2, Menu, Clock, Bell, Book, CheckSquare, Square, Layers, Sparkles, Check, BarChart3, Search, BookOpen, HeartHandshake, SlidersHorizontal, Target, Pin, Heart, ArrowUpDown, FileSpreadsheet, Award, ChevronDown, ChevronLeft, Copy, FileText, History, ChevronRight, X, Maximize2, Minimize2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppData, Skill, ClassData } from '@/lib/types';
 import { units, subjects } from '@/lib/constants';
@@ -14,6 +14,7 @@ import { BatchStudentImportModal } from './BatchStudentImportModal';
 import { FamilyReportModal } from './FamilyReportModal';
 import { ClassCouncilModal } from './ClassCouncilModal';
 import { getPlannedSkillsForUnit, getAllUnitsForSkill, savePlannedSkillsInAppData } from '@/lib/curriculumUtils';
+import { exportFamilyReportDocx } from '@/lib/docxGenerator';
 import { Document, Packer, Paragraph, HeadingLevel, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
@@ -49,7 +50,7 @@ export function MainApp({
   const [activeTab, setActiveTab] = useState<string>("portugues");
   const [activeSubFilter, setActiveSubFilter] = useState<string>("all");
   const [searchStudent, setSearchStudent] = useState("");
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'aee'>('active');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'pending' | 'inactive' | 'aee'>('active');
   const [studentSortOrder, setStudentSortOrder] = useState<'alpha' | 'pending_report' | 'attention'>('alpha');
 
   const [studentModalOpen, setStudentModalOpen] = useState(false);
@@ -76,8 +77,10 @@ export function MainApp({
   const [copiedFeedback, setCopiedFeedback] = useState(false);
   const [wordCount, setWordCount] = useState({ words: 0, chars: 0 });
   const [templates, setTemplates] = useState<{name: string, text: string}[]>([]);
+  const [isFocusMode, setIsFocusMode] = useState(false);
 
   const reportRef = useRef<HTMLDivElement>(null);
+  const focusReportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = () => {
@@ -364,12 +367,23 @@ export function MainApp({
     }
   };
 
-  const handleManualEdit = () => {
-    if (!selectedStudent || !reportRef.current) return;
-    const text = reportRef.current.innerText.toUpperCase();
+  const handleManualEdit = (customTextOrEvent?: string | React.SyntheticEvent) => {
+    if (!selectedStudent) return;
+    const customText = typeof customTextOrEvent === 'string' ? customTextOrEvent : undefined;
+    const activeText = customText !== undefined 
+      ? customText 
+      : (document.activeElement === focusReportRef.current ? focusReportRef.current?.innerText : reportRef.current?.innerText) || '';
+    const text = activeText.toUpperCase();
     const clean = text.trim();
     const words = clean ? clean.split(/\s+/).filter(Boolean).length : 0;
     setWordCount({ words, chars: clean.length });
+
+    if (reportRef.current && reportRef.current.innerText !== text && document.activeElement !== reportRef.current) {
+      reportRef.current.innerText = text;
+    }
+    if (focusReportRef.current && focusReportRef.current.innerText !== text && document.activeElement !== focusReportRef.current) {
+      focusReportRef.current.innerText = text;
+    }
     
     onUpdateAppData({
       ...appData,
@@ -386,13 +400,24 @@ export function MainApp({
     });
   };
 
+  const pendingCount = useMemo(() => {
+    return classData.students.filter(s => {
+      const isActive = classData[s]?.active !== false;
+      const obs = classData[s]?.[selectedUnit]?.observation?.trim();
+      const skillsCount = classData[s]?.[selectedUnit]?.skills?.length || 0;
+      return isActive && !obs && skillsCount === 0;
+    }).length;
+  }, [classData, selectedUnit]);
+
   const filteredStudents = useMemo(() => {
     const list = classData.students.filter(s => {
       const matchesSearch = s.toLowerCase().includes(searchStudent.toLowerCase());
       const isActive = classData[s]?.active !== false; // default to true if undefined
       const isAee = Boolean(classData[s]?.isAee);
+      const hasReport = Boolean(classData[s]?.[selectedUnit]?.observation?.trim() || (classData[s]?.[selectedUnit]?.skills?.length || 0) > 0);
       
       if (statusFilter === 'active') return matchesSearch && isActive;
+      if (statusFilter === 'pending') return matchesSearch && isActive && !hasReport;
       if (statusFilter === 'inactive') return matchesSearch && !isActive;
       if (statusFilter === 'aee') return matchesSearch && isAee;
       return matchesSearch;
@@ -420,6 +445,145 @@ export function MainApp({
       return a.localeCompare(b);
     });
   }, [classData, searchStudent, statusFilter, studentSortOrder, selectedUnit]);
+
+  const activeStudentList = useMemo(() => {
+    return filteredStudents.length > 0 ? filteredStudents : classData.students.filter(s => classData[s]?.active !== false);
+  }, [filteredStudents, classData.students, classData]);
+
+  const currentStudentIndex = activeStudentList.indexOf(selectedStudent);
+
+  const handlePrevStudent = () => {
+    if (activeStudentList.length === 0) return;
+    const idx = activeStudentList.indexOf(selectedStudent);
+    if (idx > 0) {
+      setSelectedStudent(activeStudentList[idx - 1]);
+    } else {
+      setSelectedStudent(activeStudentList[activeStudentList.length - 1]);
+    }
+  };
+
+  const handleNextStudent = () => {
+    if (activeStudentList.length === 0) return;
+    const idx = activeStudentList.indexOf(selectedStudent);
+    if (idx >= 0 && idx < activeStudentList.length - 1) {
+      setSelectedStudent(activeStudentList[idx + 1]);
+    } else {
+      setSelectedStudent(activeStudentList[0]);
+    }
+  };
+
+  const handleNextPendingStudent = () => {
+    const pendingList = classData.students.filter(s => {
+      const isActive = classData[s]?.active !== false;
+      const obs = classData[s]?.[selectedUnit]?.observation?.trim();
+      const skillsCount = classData[s]?.[selectedUnit]?.skills?.length || 0;
+      return isActive && !obs && skillsCount === 0;
+    });
+
+    if (pendingList.length === 0) {
+      alert("Excelente! Todos os estudantes ativos já possuem parecer ou habilidades nesta unidade! 🎉");
+      return;
+    }
+
+    const currentIdx = pendingList.indexOf(selectedStudent);
+    if (currentIdx >= 0 && currentIdx < pendingList.length - 1) {
+      setSelectedStudent(pendingList[currentIdx + 1]);
+    } else {
+      setSelectedStudent(pendingList[0]);
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && e.key === 'ArrowLeft') {
+        e.preventDefault();
+        handlePrevStudent();
+      } else if (e.altKey && e.key === 'ArrowRight') {
+        e.preventDefault();
+        handleNextStudent();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeStudentList, selectedStudent]);
+
+  const quickConnectives = [
+    "Demonstrou autonomia ao",
+    "Apresentou facilidade em",
+    "Evidenciou progresso na",
+    "Participou ativamente de",
+    "Necessita de mediação para",
+    "Em fase de consolidação da",
+    "Recomenda-se acompanhamento em",
+    "Apresenta boa convivência e respeito",
+    "Interage positivamente com a turma"
+  ];
+
+  const handleInsertConnective = (phrase: string) => {
+    if (!selectedStudent) return;
+    const target = isFocusMode ? focusReportRef.current : reportRef.current;
+    if (!target) return;
+    const currentText = target.innerText.trim();
+    let newText = "";
+    if (!currentText || currentText === "SELECIONE UM ESTUDANTE..." || currentText.startsWith("AGUARDANDO SELEÇÃO")) {
+      newText = phrase.toUpperCase() + " ";
+    } else {
+      const endsWithPeriod = currentText.endsWith(".");
+      newText = currentText + (endsWithPeriod ? " " : ". ") + phrase.toUpperCase() + " ";
+    }
+    target.innerText = newText;
+    handleManualEdit(newText);
+    target.focus();
+  };
+
+  const handleApplyPlannedSkillsToStudent = () => {
+    if (!selectedStudent) return;
+    const plannedIds = plannedInThisSubject.map(s => s.id);
+    if (plannedIds.length === 0) {
+      alert(`Não há habilidades cadastradas como planejadas para esta matéria na ${selectedUnit}.`);
+      return;
+    }
+    const currentStudentUnitData = classData[selectedStudent]?.[selectedUnit] || { skills: [], observation: "" };
+    const currentSkills: string[] = (currentStudentUnitData.skills as string[]) || [];
+    
+    // Check if all planned are already selected
+    const allAlready = plannedIds.every((id: string) => currentSkills.includes(id));
+    let nextSkills: string[] = [];
+    if (allAlready) {
+      // Toggle off: remove planned skills
+      nextSkills = currentSkills.filter((id: string) => !plannedIds.includes(id));
+    } else {
+      // Add all planned skills
+      nextSkills = Array.from(new Set([...currentSkills, ...plannedIds]));
+    }
+
+    const selectedSkills = globalSkills
+      .filter(sk => nextSkills.includes(sk.id) && sk.grade === currentGrade)
+      .sort((a, b) => {
+        const orderA = subjectOrder.indexOf(a.subject);
+        const orderB = subjectOrder.indexOf(b.subject);
+        if (orderA !== orderB) return orderA - orderB;
+        return a.id.localeCompare(b.id);
+      });
+
+    const gender = classData[selectedStudent]?.gender;
+    const newText = formatReportText(selectedStudent, selectedUnit, selectedSkills, gender);
+
+    onUpdateAppData({
+      ...appData,
+      [classKey]: {
+        ...classData,
+        [selectedStudent]: {
+          ...classData[selectedStudent],
+          [selectedUnit]: {
+            ...currentStudentUnitData,
+            skills: nextSkills,
+            observation: newText
+          }
+        }
+      }
+    });
+  };
 
   const getStatsRaw = () => {
     const activeStudents = classData.students.filter(s => classData[s]?.active !== false);
@@ -630,10 +794,13 @@ export function MainApp({
     if (reportRef.current && document.activeElement !== reportRef.current) {
       reportRef.current.innerText = reportText;
     }
-    const clean = (reportRef.current?.innerText || reportText || "").trim();
+    if (focusReportRef.current && document.activeElement !== focusReportRef.current) {
+      focusReportRef.current.innerText = reportText;
+    }
+    const clean = (reportRef.current?.innerText || focusReportRef.current?.innerText || reportText || "").trim();
     const words = clean ? clean.split(/\s+/).filter(Boolean).length : 0;
     setWordCount({ words, chars: clean.length });
-  }, [reportText, selectedStudent, selectedUnit]);
+  }, [reportText, selectedStudent, selectedUnit, isFocusMode]);
 
   const unitIndex = units.indexOf(selectedUnit);
   const prevUnit = unitIndex > 0 ? units[unitIndex - 1] : "";
@@ -733,43 +900,50 @@ export function MainApp({
 
   return (
     <div className="h-full flex flex-col">
-      <header className="h-16 bg-[#fdfbf7]/95 backdrop-blur-md flex items-center justify-between px-6 shrink-0 border-b border-stone-200/80 shadow-2xs z-50">
-        <div className="flex items-center gap-3">
+      <header className="h-16 bg-[#fdfbf7]/95 backdrop-blur-md flex items-center justify-between px-3 sm:px-6 shrink-0 border-b border-stone-200/80 shadow-2xs z-50">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button onClick={onGoBack} className="w-9 h-9 hover:bg-stone-100 rounded-full flex items-center justify-center text-stone-400 hover:text-stone-700 transition-colors" title="Voltar para Turmas">
             <Home className="w-4 h-4" />
           </button>
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="w-9 h-9 hover:bg-stone-100 rounded-full flex items-center justify-center text-stone-400 hover:text-stone-700 transition-colors" title="Menu Lateral">
+          <button 
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+            className="w-9 h-9 hover:bg-stone-100 rounded-full flex items-center justify-center text-stone-400 hover:text-stone-700 transition-colors" 
+            title="Menu Lateral de Estudantes"
+          >
             <Menu className="w-4 h-4" />
           </button>
-          <div className="flex items-center gap-3 border-l border-stone-200 pl-3">
+          <div className="flex items-center gap-2 sm:gap-3 border-l border-stone-200 pl-2 sm:pl-3">
             <SchoolLogo size="sm" showText={false} />
             <div>
-              <h1 className="text-sm sm:text-base font-bold font-serif tracking-tight text-stone-900 leading-tight flex items-center gap-2">
+              <h1 className="text-xs sm:text-base font-bold font-serif tracking-tight text-stone-900 leading-tight flex items-center gap-1.5 sm:gap-2">
                 <span>{currentGrade}º ANO &quot;{currentLetter}&quot;</span>
-                <span className={`text-[10px] font-sans font-bold px-2 py-0.5 rounded-md ${
+                <span className={`text-[9px] sm:text-[10px] font-sans font-bold px-1.5 sm:px-2 py-0.5 rounded-md ${
                   isViewingArchive ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-100 text-emerald-800'
                 }`}>
                   {isViewingArchive ? `Arquivo ${viewingYear}` : viewingYear}
                 </span>
               </h1>
-              <p className="text-[10px] font-serif italic text-stone-500 font-medium leading-none mt-0.5">
+              <p className="text-[9px] sm:text-[10px] font-serif italic text-stone-500 font-medium leading-none mt-0.5 truncate max-w-[140px] sm:max-w-none">
                 Escola Municipal Raymundo Lemos Santana
               </p>
             </div>
           </div>
         </div>
-        <div className="hidden md:flex bg-stone-100/90 p-1 rounded-2xl gap-1 border border-stone-200/60 shadow-inner">
+
+        {/* Unit Selector */}
+        <div className="flex bg-stone-100/90 p-1 rounded-2xl gap-1 border border-stone-200/60 shadow-inner">
           {units.map(u => (
             <button 
               key={u} 
               onClick={() => setSelectedUnit(u)} 
-              className={`px-4 py-2 text-[10px] font-bold uppercase rounded-xl transition-all ${selectedUnit === u ? 'bg-white text-escola-azul shadow-sm -translate-y-[1px]' : 'text-stone-500 hover:text-stone-800'}`}
+              className={`px-3 sm:px-4 py-2 text-[10px] font-bold uppercase rounded-xl transition-all ${selectedUnit === u ? 'bg-white text-escola-azul shadow-sm -translate-y-[1px]' : 'text-stone-500 hover:text-stone-800'}`}
             >
               {u}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-3">
+
+        <div className="flex items-center gap-2 sm:gap-3">
           <button 
             onClick={() => setClassCouncilOpen(true)} 
             className="hidden lg:flex items-center gap-1.5 px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs hover:scale-105 active:scale-95"
@@ -855,14 +1029,14 @@ export function MainApp({
               </div>
             )}
           </div>
-          <button onClick={exportBatchDocx} className="bg-escola-azul hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-[10px] font-bold uppercase shadow-sm flex items-center gap-2 transition-all hover:scale-105 active:scale-95">
-            <Download className="w-3.5 h-3.5" /> Exportar Turma
+          <button onClick={exportBatchDocx} className="hidden sm:flex bg-escola-azul hover:bg-blue-700 text-white px-3.5 sm:px-5 py-2 rounded-xl text-[10px] font-bold uppercase shadow-sm items-center gap-2 transition-all hover:scale-105 active:scale-95">
+            <Download className="w-3.5 h-3.5" /> <span className="hidden md:inline">Exportar Turma</span>
           </button>
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden escolar-bg p-4 gap-4">
-        <aside className={`bg-white/95 backdrop-blur-md rounded-3xl border border-stone-200/80 flex flex-col shrink-0 transition-all duration-300 shadow-[0_8px_30px_rgba(40,30,20,0.04)] ${isSidebarOpen ? 'w-72' : 'w-0 overflow-hidden border-none opacity-0'}`}>
+      <div className="flex flex-1 overflow-hidden escolar-bg p-2 sm:p-4 gap-2 sm:gap-4 relative">
+        <aside className={`flex bg-white/95 backdrop-blur-md rounded-3xl border border-stone-200/80 flex-col shrink-0 transition-all duration-300 shadow-[0_8px_30px_rgba(40,30,20,0.04)] ${isSidebarOpen ? 'w-72' : 'w-0 overflow-hidden border-none opacity-0'}`}>
           <div className="w-72 flex flex-col h-full">
             <div className="p-6 pb-2">
               <div className="flex justify-between items-center mb-3">
@@ -889,10 +1063,11 @@ export function MainApp({
                   Ativos
                 </button>
                 <button 
-                  onClick={() => setStatusFilter('inactive')}
-                  className={`flex-1 py-1 text-[9px] font-bold uppercase rounded-lg transition-all ${statusFilter === 'inactive' ? 'bg-white text-stone-800 shadow-2xs font-black' : 'text-stone-500 hover:text-stone-800'}`}
+                  onClick={() => setStatusFilter('pending')}
+                  className={`flex-1 py-1 text-[9px] font-bold uppercase rounded-lg transition-all ${statusFilter === 'pending' ? 'bg-amber-500 text-white shadow-2xs font-black' : 'text-amber-700 hover:bg-amber-50'}`}
+                  title="Alunos com parecer pendente nesta unidade"
                 >
-                  Inat.
+                  Pend. ({pendingCount})
                 </button>
                 <button 
                   onClick={() => setStatusFilter('aee')}
@@ -1107,7 +1282,7 @@ export function MainApp({
           ) : (
             <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
               {/* Left/Center: Skills & Curriculum (scrollable) */}
-              <div className="flex-1 overflow-y-auto p-5 md:p-7 space-y-5 min-w-0">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-7 pb-24 lg:pb-7 space-y-4 sm:space-y-5 min-w-0">
                 <section>
                 {/* Bimestre Curriculum Filter & Organizer Bar - Luminous Glassmorphic Banner */}
                 <div className="relative overflow-hidden bg-gradient-to-r from-white/90 via-sky-50/65 to-emerald-50/70 backdrop-blur-xl p-4 sm:p-5 rounded-3xl border border-sky-100 shadow-[0_10px_30px_rgba(0,91,183,0.06)] flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-5">
@@ -1167,6 +1342,17 @@ export function MainApp({
                         <span>Todas ({allSubjectSkills.length})</span>
                       </button>
                     </div>
+
+                    {plannedInThisSubject.length > 0 && selectedStudent && !isBulkMode && (
+                      <button 
+                        onClick={handleApplyPlannedSkillsToStudent}
+                        className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold uppercase rounded-xl transition-all shadow-sm flex items-center gap-1.5 hover:scale-105 active:scale-95 shrink-0"
+                        title={`Marcar todas as ${plannedInThisSubject.length} habilidades planejadas para esta matéria no estudante atual`}
+                      >
+                        <CheckSquare className="w-3.5 h-3.5 text-emerald-200" />
+                        <span>Marcar Planejadas ({plannedInThisSubject.length})</span>
+                      </button>
+                    )}
 
                     <button 
                       onClick={() => setUnitOrganizerOpen(true)} 
@@ -1368,15 +1554,38 @@ export function MainApp({
                 {/* Header of Report Panel */}
                 <div className="bg-stone-900 px-4 py-3 flex items-center justify-between text-white shrink-0 border-b border-stone-800">
                   <div className="flex items-center gap-2 min-w-0">
-                    <Edit3 className="w-4 h-4 text-escola-verde shrink-0" />
-                    <span className="text-xs font-serif font-bold tracking-wide text-stone-100 truncate" title={selectedStudent || "Sem aluno"}>
-                      {selectedStudent || "Selecione um Estudante"}
-                    </span>
-                    {classData[selectedStudent]?.isAee && (
-                      <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-purple-500 text-white shrink-0">
-                        AEE
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={handlePrevStudent}
+                        className="w-6 h-6 bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white rounded-md flex items-center justify-center transition-colors shadow-2xs"
+                        title="Aluno Anterior (Atalho: Alt + ←)"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={handleNextStudent}
+                        className="w-6 h-6 bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white rounded-md flex items-center justify-center transition-colors shadow-2xs"
+                        title="Próximo Aluno (Atalho: Alt + →)"
+                      >
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-xs font-serif font-bold tracking-wide text-stone-100 truncate" title={selectedStudent || "Sem aluno"}>
+                        {selectedStudent || "Selecione um Estudante"}
                       </span>
-                    )}
+                      {classData[selectedStudent]?.isAee && (
+                        <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-purple-500 text-white shrink-0">
+                          AEE
+                        </span>
+                      )}
+                      {currentStudentIndex >= 0 && (
+                        <span className="text-[9px] font-mono text-stone-400 hidden xl:inline shrink-0">
+                          ({currentStudentIndex + 1}/{activeStudentList.length})
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-1.5 shrink-0">
@@ -1413,13 +1622,32 @@ export function MainApp({
                             <span>Histórico Anual Completo</span>
                           </button>
                           <div className="border-t border-stone-100 my-1"></div>
-                          <div className="px-3 py-1 text-[9px] font-bold text-stone-400 uppercase tracking-wider">Devolutiva</div>
+                          <div className="px-3 py-1 text-[9px] font-bold text-stone-400 uppercase tracking-wider">Devolutiva Familiar</div>
+                          <button
+                            onClick={() => {
+                              setExportMenuOpen(false);
+                              exportFamilyReportDocx({
+                                studentName: selectedStudent,
+                                currentGrade,
+                                currentLetter,
+                                selectedUnit,
+                                classData,
+                                globalSkills,
+                                year: viewingYear
+                              });
+                            }}
+                            className="w-full px-3 py-2 text-left text-xs font-medium text-emerald-800 hover:bg-emerald-50 flex items-center gap-2 transition-colors font-bold"
+                            title="Baixar arquivo DOCX formatado para entrega à família com sugestões de aprendizagem"
+                          >
+                            <Download className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Devolutiva Familiar (DOCX)</span>
+                          </button>
                           <button
                             onClick={() => { setExportMenuOpen(false); setFamilyReportOpen(true); }}
-                            className="w-full px-3 py-2 text-left text-xs font-medium text-emerald-800 hover:bg-emerald-50 flex items-center gap-2 transition-colors"
+                            className="w-full px-3 py-2 text-left text-xs font-medium text-stone-700 hover:bg-stone-100 flex items-center gap-2 transition-colors"
                           >
-                            <Heart className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>Ficha para a Família (A4)</span>
+                            <Heart className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Visualizar Ficha A4</span>
                           </button>
                         </div>
                       )}
@@ -1484,6 +1712,17 @@ export function MainApp({
                       )}
                     </div>
 
+                    {pendingCount > 0 && (
+                      <button 
+                        onClick={handleNextPendingStudent}
+                        className="hidden sm:flex items-center gap-1 text-[9px] font-bold uppercase bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 px-2 py-1.5 rounded-lg transition-colors"
+                        title="Avançar diretamente para o próximo aluno com parecer pendente"
+                      >
+                        <Clock className="w-3 h-3 text-amber-400" />
+                        <span className="hidden xl:inline">Pendente</span>
+                      </button>
+                    )}
+
                     {/* Botão Copiar */}
                     <button 
                       onClick={handleCopyReport} 
@@ -1496,6 +1735,15 @@ export function MainApp({
                     >
                       {copiedFeedback ? <Check className="w-3 h-3 text-white" /> : <Copy className="w-3 h-3 text-stone-300" />}
                       <span className="hidden xl:inline">{copiedFeedback ? 'Copiado!' : 'Copiar'}</span>
+                    </button>
+
+                    {/* Botão Modo Foco em Tela Cheia */}
+                    <button 
+                      onClick={() => setIsFocusMode(true)}
+                      className="text-stone-400 hover:text-white p-1 rounded-lg hover:bg-stone-800 transition-colors ml-0.5"
+                      title="Expandir para Modo Foco em Tela Cheia"
+                    >
+                      <Maximize2 className="w-3.5 h-3.5 text-amber-400" />
                     </button>
 
                     {/* Botão Recolher */}
@@ -1568,6 +1816,33 @@ export function MainApp({
                             : 'bg-stone-50/60 border-stone-200/80 focus:bg-white focus:border-stone-400 text-stone-900'
                         }`}
                       />
+
+                      {/* Conectivos Rápidos em Linha (1-Toque) */}
+                      <div className="mt-3 pt-2.5 border-t border-stone-200/70 shrink-0">
+                        <div className="flex items-center justify-between mb-1.5 px-0.5">
+                          <span className="text-[9px] font-bold text-stone-400 uppercase tracking-wider flex items-center gap-1">
+                            <span>⚡</span> Conectivos Rápidos (1-Toque):
+                          </span>
+                          <button
+                            onClick={() => setIsPhraseBankOpen(true)}
+                            className="text-[9px] font-bold text-escola-azul hover:underline uppercase"
+                          >
+                            + Banco Completo
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                          {quickConnectives.map(phrase => (
+                            <button
+                              key={phrase}
+                              onClick={() => handleInsertConnective(phrase)}
+                              className="px-2.5 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 hover:text-stone-900 rounded-lg text-[10px] font-medium whitespace-nowrap transition-colors border border-stone-200/80 shadow-2xs hover:scale-[1.02] active:scale-95"
+                              title={`Inserir "${phrase}" no parecer`}
+                            >
+                              + {phrase}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -1676,6 +1951,161 @@ export function MainApp({
       )}
     </div>
 
+      {/* Fullscreen Focus Mode Overlay */}
+      <AnimatePresence>
+        {isFocusMode && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 bg-[#fdfbf7] flex flex-col"
+          >
+            <div className="h-14 sm:h-16 bg-stone-900 text-white px-4 sm:px-6 flex items-center justify-between shrink-0 border-b border-stone-800">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Edit3 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <div className="truncate">
+                  <span className="text-xs sm:text-sm font-serif font-bold text-stone-100 truncate block">
+                    {selectedStudent || "Estudante"} • Modo Foco
+                  </span>
+                  <span className="text-[10px] text-stone-400 font-sans uppercase">
+                    {currentGrade}º {currentLetter} • {selectedUnit}
+                  </span>
+                </div>
+                {classData[selectedStudent]?.isAee && (
+                  <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-purple-500 text-white shrink-0">
+                    AEE
+                  </span>
+                )}
+
+                {/* Navegador de Estudantes no Modo Foco */}
+                <div className="flex items-center gap-1 bg-stone-800/90 border border-stone-700/80 px-2 py-0.5 rounded-xl ml-2 shrink-0">
+                  <button
+                    onClick={handlePrevStudent}
+                    disabled={activeStudentList.length <= 1}
+                    className="p-1 text-stone-300 hover:text-white disabled:opacity-30 hover:bg-stone-700/60 rounded-md transition-colors"
+                    title="Estudante anterior (Alt + ←)"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-[10px] font-mono font-bold text-stone-300 px-1">
+                    {currentStudentIndex >= 0 ? `${currentStudentIndex + 1}/${activeStudentList.length}` : '—'}
+                  </span>
+                  <button
+                    onClick={handleNextStudent}
+                    disabled={activeStudentList.length <= 1}
+                    className="p-1 text-stone-300 hover:text-white disabled:opacity-30 hover:bg-stone-700/60 rounded-md transition-colors"
+                    title="Próximo estudante (Alt + →)"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                  {pendingCount > 0 && (
+                    <button
+                      onClick={handleNextPendingStudent}
+                      className="ml-1 px-1.5 py-0.5 text-[9px] font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded transition-colors hidden sm:inline-block"
+                      title="Pular para próximo parecer pendente"
+                    >
+                      Pend ({pendingCount})
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button 
+                  onClick={handleCopyReport}
+                  className={`text-xs px-3 py-1.5 rounded-xl font-bold uppercase flex items-center gap-1.5 transition-colors ${
+                    copiedFeedback 
+                      ? 'bg-emerald-600 text-white' 
+                      : 'bg-stone-800 hover:bg-stone-700 text-stone-200 hover:text-white'
+                  }`}
+                >
+                  {copiedFeedback ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedFeedback ? 'Copiado!' : 'Copiar'}</span>
+                </button>
+                <button
+                  onClick={() => setIsPhraseBankOpen(true)}
+                  className="hidden sm:flex text-xs bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/80 text-emerald-300 px-3 py-1.5 rounded-xl font-bold uppercase items-center gap-1.5"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Frases</span>
+                </button>
+                <button
+                  onClick={() => setIsFocusMode(false)}
+                  className="text-xs bg-stone-800 hover:bg-stone-700 text-stone-200 px-3 py-1.5 rounded-xl font-bold uppercase flex items-center gap-1.5 transition-colors"
+                  title="Sair do Modo Foco"
+                >
+                  <Minimize2 className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="hidden sm:inline">Minimizar</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 flex flex-col overflow-y-auto p-4 sm:p-8 max-w-4xl mx-auto w-full">
+              {prevUnitText && (
+                <div className="mb-4 p-3.5 bg-amber-50/80 border border-amber-200/90 rounded-2xl">
+                  <span className="text-[10px] font-bold text-amber-800 uppercase tracking-widest block mb-1">
+                    Memória do Bimestre Anterior ({prevUnit}):
+                  </span>
+                  <p className="font-serif text-xs uppercase leading-relaxed text-stone-700">
+                    {prevUnitText}
+                  </p>
+                </div>
+              )}
+
+              <div 
+                ref={focusReportRef}
+                spellCheck={true}
+                contentEditable={!isBulkMode && !!selectedStudent} 
+                onInput={() => handleManualEdit(focusReportRef.current?.innerText)}
+                onBlur={() => handleManualEdit(focusReportRef.current?.innerText)}
+                className="font-serif leading-[1.9] text-sm sm:text-base outline-none p-6 sm:p-8 rounded-3xl uppercase text-justify min-h-[300px] flex-1 bg-white border border-stone-200/90 shadow-sm focus:border-stone-400 text-stone-900 font-normal"
+              />
+
+              {/* Conectivos Rápidos em Linha (1-Toque) no Modo Foco */}
+              <div className="mt-3 pt-3 border-t border-stone-200/80 shrink-0">
+                <div className="flex items-center justify-between mb-1.5 px-0.5">
+                  <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1">
+                    <span>⚡</span> Conectivos Rápidos (1-Toque):
+                  </span>
+                  <button
+                    onClick={() => setIsPhraseBankOpen(true)}
+                    className="text-[10px] font-bold text-emerald-700 hover:text-emerald-800 hover:underline uppercase"
+                  >
+                    + Banco Completo
+                  </button>
+                </div>
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                  {quickConnectives.map(phrase => (
+                    <button
+                      key={phrase}
+                      onClick={() => handleInsertConnective(phrase)}
+                      className="px-2.5 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 hover:text-stone-900 rounded-lg text-xs font-medium whitespace-nowrap transition-colors border border-stone-200 shadow-2xs hover:scale-[1.02] active:scale-95"
+                      title={`Inserir "${phrase}" no parecer`}
+                    >
+                      + {phrase}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="h-12 bg-stone-100/95 border-t border-stone-200 px-6 flex items-center justify-between text-xs text-stone-500 shrink-0">
+              <div className="flex items-center gap-3">
+                <span className="font-mono font-bold text-stone-800">{wordCount.words} palavras</span>
+                <span>•</span>
+                <span className="font-mono">{wordCount.chars} caracteres</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-emerald-700 font-medium flex items-center gap-1 text-[11px]">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Salvo automaticamente
+                </span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <StudentModal 
         isOpen={studentModalOpen} 
         initialName={studentToEdit} 
@@ -1706,6 +2136,7 @@ export function MainApp({
         selectedUnit={selectedUnit}
         classData={classData}
         globalSkills={globalSkills}
+        viewingYear={viewingYear}
       />
 
       <ClassCouncilModal

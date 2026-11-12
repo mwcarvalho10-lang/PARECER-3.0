@@ -1,9 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Printer, X, Heart, Star, Sparkles, BookOpen } from 'lucide-react';
+import { Printer, X, Heart, Star, Sparkles, BookOpen, Download } from 'lucide-react';
 import { Skill, ClassData } from '@/lib/types';
 import { SchoolLogo } from './SchoolLogo';
+import { exportFamilyReportDocx, generateLearningSuggestions } from '@/lib/docxGenerator';
 
 interface FamilyReportModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface FamilyReportModalProps {
   selectedUnit: string;
   classData: ClassData;
   globalSkills: Skill[];
+  viewingYear?: string;
 }
 
 export function FamilyReportModal({
@@ -24,23 +26,43 @@ export function FamilyReportModal({
   currentLetter,
   selectedUnit,
   classData,
-  globalSkills
+  globalSkills,
+  viewingYear = '2026'
 }: FamilyReportModalProps) {
   if (!isOpen || !studentName) return null;
 
   const studentData = classData[studentName] || {};
   const unitData = studentData[selectedUnit] || { skills: [], observation: '' };
-  const masteredSkillIds: string[] = unitData.skills || [];
+  const masteredSkillIds: string[] = (unitData.skills as string[]) || [];
 
   // Filter skills belonging to this grade
   const masteredSkills = globalSkills
-    .filter(s => s.grade === currentGrade && masteredSkillIds.includes(s.id))
-    .slice(0, 8); // Top 8 highlighted for 1-page aesthetic
+    .filter(s => s.grade === currentGrade && masteredSkillIds.includes(s.id));
+  
+  const allGradeSkills = globalSkills.filter(s => s.grade === currentGrade);
 
   const observationText = unitData.observation?.trim() || "Estudante participativo(a), demonstrando dedicação e interesse contínuo nas atividades pedagógicas da etapa.";
 
+  const suggestions = generateLearningSuggestions(
+    masteredSkillIds,
+    allGradeSkills,
+    studentData.isAee
+  );
+
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadDocx = () => {
+    exportFamilyReportDocx({
+      studentName,
+      currentGrade,
+      currentLetter,
+      selectedUnit,
+      classData,
+      globalSkills,
+      year: viewingYear
+    });
   };
 
   return (
@@ -52,19 +74,26 @@ export function FamilyReportModal({
           <div className="flex items-center gap-2">
             <Heart className="w-4 h-4 text-emerald-400" />
             <span className="text-xs font-bold uppercase tracking-wider font-serif">
-              Ficha Resumida para a Família (A4)
+              Ficha de Devolutiva para a Família
             </span>
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={handleDownloadDocx}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase flex items-center gap-1.5 shadow-sm transition-all hover:scale-105 active:scale-95"
+              title="Baixar arquivo Word formatado para impressão ou edição"
+            >
+              <Download className="w-3.5 h-3.5 text-sky-200" /> Baixar DOCX
+            </button>
+            <button
               onClick={handlePrint}
               className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase flex items-center gap-1.5 shadow-sm transition-all hover:scale-105 active:scale-95"
             >
-              <Printer className="w-3.5 h-3.5" /> Imprimir Ficha
+              <Printer className="w-3.5 h-3.5" /> Imprimir
             </button>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-stone-400 hover:text-white hover:bg-stone-800 transition-colors"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-stone-400 hover:text-white hover:bg-stone-800 transition-colors ml-1"
             >
               <X className="w-4 h-4" />
             </button>
@@ -150,14 +179,19 @@ export function FamilyReportModal({
               </div>
             </div>
 
-            {/* Como apoiar em casa */}
-            <div className="p-3.5 bg-amber-50/60 rounded-xl border border-amber-200/80 text-[11px] text-amber-950 space-y-1">
-              <span className="font-bold flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-amber-600" /> Dicas para a Família Apoiar em Casa:
+            {/* Como apoiar em casa - Sugestões Automáticas para a Aprendizagem */}
+            <div className="p-4 bg-amber-50/70 rounded-2xl border border-amber-200/90 text-[11px] text-amber-950 space-y-2">
+              <span className="font-bold flex items-center gap-1.5 text-xs text-amber-900 uppercase tracking-wide">
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" /> Orientações e Sugestões para Apoiar a Aprendizagem em Família:
               </span>
-              <p className="leading-relaxed">
-                Incentive 15 minutos diários de leitura agradável, valorize cada avanço e mantenha uma rotina organizada para as tarefas escolares.
-              </p>
+              <div className="space-y-1.5 pt-1">
+                {suggestions.map((sug, i) => (
+                  <div key={i} className="flex items-start gap-1.5 leading-relaxed">
+                    <span className="font-bold text-amber-800 shrink-0">• {sug.category}:</span>
+                    <span className="text-stone-700">{sug.tip}</span>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Assinaturas */}
